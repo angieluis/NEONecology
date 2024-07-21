@@ -420,7 +420,7 @@ sort(unique(weather$wss_daily_humid$siteID))
 sort(unique(weather$wss_daily_temp$siteID))
 # only 20 sites
 
-# won't use this. instead got Daymet data. see other file
+# won't use this. instead got Daymet data. See below.
 
 
 
@@ -575,7 +575,6 @@ temp <- loadByProduct("DP1.00003.001", startdate = "2019-01", enddate = "2022-12
 
 
 
-# 
 
 # Vegetation indices - spectrometer - mosaic
 # DP3.30026.001
@@ -720,16 +719,16 @@ save(daymetsummaries.long, daymetmeans, file="DaymetMeans.RData")
 # which plots (within sites) overlap for the different data types?
 plantplots <- sort(unique(plantsDD$plotID))
 length(plantplots)
-#1577
-beetleplots <- sort(unique(neon_beetles$plotID))
+#1579
+beetleplots <- sort(unique(beetlesDD$plotID))
 length(beetleplots)
-#511
-birdplots <- sort(unique(birds$plotID))
+#514
+birdplots <- sort(unique(birdsDD$plotID))
 length(birdplots)
-#644
-smammalplots <- sort(unique(smammals$plotID))
+#648
+smammalplots <- sort(unique(smammalsDD$plotID))
 length(smammalplots)
-#326
+#328
 biomassplots <- sort(unique(biomass$plotID))
 length(biomassplots)
 #1628
@@ -742,17 +741,17 @@ plant.habitat.plots <- plantsDD %>%
   summarise(plant.plots = length(unique(plotID)))
 
 habitat.plots <- full_join(plant.habitat.plots,
-                           neon_beetles %>%
+                           beetlesDD %>%
                              group_by(nlcdClass) %>%
                              summarise(beetle.plots = length(unique(plotID))))
 
 habitat.plots <- full_join(habitat.plots,
-                           birds %>%
+                           birdsDD %>%
                              group_by(nlcdClass) %>%
                              summarise(bird.plots = length(unique(plotID))))
 
 habitat.plots <- full_join(habitat.plots,
-                           smammals %>%
+                           smammalsDD %>%
                              group_by(nlcdClass) %>%
                              summarise(smammal.plots = length(unique(plotID))))
 
@@ -775,19 +774,19 @@ plant.site.habitats <- plantsDD %>%
   summarise(plant.n = length(unique(plotID)))
 
 site.habitat.plots <- full_join(plant.site.habitats,
-  birds %>%
+  birdsDD %>%
   group_by(siteID, nlcdClass) %>%
   summarise(bird.n = length(unique(plotID)))
 )
 
 site.habitat.plots <- full_join(site.habitat.plots,
-                                neon_beetles %>%
+                                beetlesDD %>%
                                   group_by(siteID, nlcdClass) %>%
                                   summarise(beetle.n = length(unique(plotID)))
 )
 
 site.habitat.plots <- full_join(site.habitat.plots,
-                                smammals %>%
+                                smammalsDD %>%
                                   group_by(siteID, nlcdClass) %>%
                                   summarise(smammal.n = length(unique(plotID)))
 )
@@ -812,8 +811,4 @@ site.habitat.plots %>%
 
 
 
-#############################################################################
-# Save raw data separately from neonDivData
-
-prod, 
   
