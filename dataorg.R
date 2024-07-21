@@ -1,3 +1,9 @@
+###############################################################################
+## Downloading, organizing and taking first look at NEON data
+###############################################################################
+
+# plant cover, beetles, birds, and small mammals are from the neonDivData package
+# plant productivity, and soil data are directly from NEON using neonUtilities package
 
 library(tidyverse)
 library(neonUtilities)
@@ -9,19 +15,19 @@ library(scales)
 
 
 ###############################################################################
-## Look at diversity in plants using neonDivData
+## Look at plant cover and diversity using neonDivData
 ###############################################################################
 
 # reloaded the neonDivData package to get updated data
 # install.packages("neonDivData", repos = 'https://daijiang.r-universe.dev')
+# these data go through 2022-10-26
 
-#neon_plants <- data_plant #before update
 plantsDD <- neonDivData::data_plant
 
 plant.sites <- sort(unique(plantsDD$siteID))
 plant.plots <- sort(unique(plantsDD$plotID))
 length(plant.plots)
-#1577
+#1579
 
 print(plantsDD %>%
   group_by(siteID) %>%
@@ -40,12 +46,10 @@ plantsDD <- plantsDD %>%
 # [981] Calystegia silvatica (Kit.) Griseb.                                                               
 # [982] Calystegia silvatica (Kit.) Griseb. ssp. fraterniflora (Mack. & Bush) Brummitt                    
 # when IDed to subspecies the 4 letter code is longer than 4 letters, so if 
-# truncate to first 4 letters, it removes subspecies, but it's a problem see below
-
-# # add column that truncates taxonID to 4 letters, so removes subspecies
-# plantsDD$taxonID4 <- factor(str_trunc(as.character(plantsDD$taxon_id), 4, 
-#                                          "right", ellipsis = ""))
-# # this doesn't work. see below
+# truncate to first 4 letters, it removes subspecies, but it's a problem 
+# because 4-letter codes are not unique - "ABFR" and "ABFR2" are 2 different species
+# Abies fraseri"    "Abronia fragrans"
+# instead to get unique species will truncate species to first 2 words
 
 
 # add columms of genus names that truncates to first 1 word & species names
@@ -54,108 +58,25 @@ plantsDD <- plantsDD %>%
 plantsDD$genus <- str_split_i(plantsDD$taxon_name," ",1)
 plantsDD$species <- paste(plantsDD$genus , str_split_i(plantsDD$taxon_name," ",2))
 
-# # tomake sure species lines up to taxonID4:
-# dat <- plantsDD %>% 
-#   group_by(taxonID4) %>%
-#   summarise(n.sp=length(unique(species)))
-# summary(dat)
-# # nope
-#
-# dat2 <- plantsDD %>% 
-#     group_by(species) %>%
-#     summarise(n.sp=length(unique(taxonID4)))
-# summary(dat2)
-# 
-# # each species has only 1 4-letter code, but some 4-letter codes have >1 species, up to 14.
-# # look at see which
-# dat3 <- plantsDD %>% 
-#   group_by(taxonID4) %>%
-#   summarise(n.sp=length(unique(species)), taxon=paste(unique(plantsDD$taxon_name)),
-#             species=paste(unique(plantsDD$species)))
-# 
-# #AAAAAAAAGGH! 
-# # "ABFR" and "ABFR2" are 2 different species
-# # Abies fraseri"    "Abronia fragrans"
-# # so truncating to first 4 does not make them unique species
-# # hopefully using first 2 words of taxon_name will work for species.
-# # remove taxonID4
-
-# plantsDD <- plantsDD[,-(which(names(plantsDD)=="taxonID4"))]
-
 species.codes <- plantsDD %>%
   group_by(species, genus, taxon_rank) %>%
   summarise(codes=str_flatten(unique(taxon_id),collapse=" | "))
 
+# write file of species names so Jed can look up plant traits:
 write.csv(species.codes, file="PlantSpecies.csv", row.names = F)
 
-# <--------------------------- still need to clean this up for diversity estimation
-### Also some where are not ID to species
+# <--------------------------- need to deal with this up for diversity estimation
+### Some were not ID'ed to species
 #  [983] Calystegia sp. 
 # also some say "sp." and some say "spp."
-# will probably wnat to make sure that something from this genus is already 
+# will probably want to make sure that something from this genus is already 
 # counted in the diversity estimate or make it's own species
 # I checked, and all those with 'sp.' and 'spp.', say 'genus' under taxon_rank. 
+# I'm leaving those for now and will deal with them when do diversity estimation
+# for each plot
 
-## <------------------------------------- Need to redo all this because 
-# If subplotID ends in .1 then they measured percent cover at 1 square-meter plot. 
-# If ends in .10 (or no decimal) then the 10 sq meter plot (or 100 sqm plot)
-# then they just wrote down all the species they saw – so NA under percent cover
-# I need to make sure those NAs aren't removed and are counted in the species 
-# richness estimates
 
-# this is getting species richness per plot per day - should I sum for each plot
-# over any day? all unique species per plot over any time sampled? number of 
-# sampling occasions and plots and times of year will affect it
-plantdiversity_byplotdate <- plantsDD %>%
-  group_by(siteID, plotID, observation_datetime) %>%
-  summarise(subplots = length(unique(subplot_id)), 
-            sp_richness = length(unique(taxon_name)), 
-            any_invasives = any(nativeStatusCode=="I"),
-            total_cover = sum(percent_cover, na.rm=TRUE))
-
-# how should I account for different number of subplots?
-
-# mean over all dates sampled for a plot
-plantdiversity_byplot <- plantdiversity_byplotdate %>%
-  group_by(siteID, plotID) %>%
-  summarise(mean_sp_richness = mean(sp_richness), n_surveys = n(), 
-            any_invasives = any(any_invasives))
-
-# even within just Abby there is a lot of variation in mean species richness
-# mean and SE of mean species richness for each plot within a site
-
-plantdiversity_bysite <- plantdiversity_byplot %>%
-  group_by(siteID) %>%
-  summarise(mean_mean_sp_richness=mean(mean_sp_richness),
-            SE_mean_sp_richness=sd(mean_sp_richness)/sqrt(n()))
-
-# joined with total species richness - all taxa ever recorded for the site 
-plantdiversity_bysite <- full_join(plantdiversity_bysite,
-                                   plantsDD %>%
-                                       group_by(siteID) %>%
-                                       summarise(total_sp_richness=length(unique(taxon_name))),
-                                     by="siteID")
-
-summary(plantdiversity_bysite)
-# mean and total pretty correlated
-
-### right now, some are IDed to subspecies
-# [981] Calystegia silvatica (Kit.) Griseb.                                                               
-# [982] Calystegia silvatica (Kit.) Griseb. ssp. fraterniflora (Mack. & Bush) Brummitt                    
-# when IDed to subspecies the 4 letter code is longer than 4 letters, so if 
-# truncate to first 4 letters, it removes subspecies
-### Also some where are not ID to species
-#  [983] Calystegia sp. 
-# will probably wnat to make sure that something from this genus is already 
-# counted in the diversity estimate or make it's own species
-
-# 6/24/2013 - 10/13/2021
-
-###############################################################################
-## Download raw data for plant cover and see what DivData did to clean it 
-# remove bare ground, etc..
-###############################################################################
-
+# Also downloaded raw data but currently using the DivData
 # plants.raw <- loadByProduct("DP1.10058.001",
 #                        token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzI1NiJ9.eyJhdWQiOiJodHRwczovL2RhdGEubmVvbnNjaWVuY2Uub3JnL2FwaS92MC8iLCJzdWIiOiJhbmdlbGEubHVpc0B1bW9udGFuYS5lZHUiLCJzY29wZSI6InJhdGU6cHVibGljIiwiaXNzIjoiaHR0cHM6Ly9kYXRhLm5lb25zY2llbmNlLm9yZy8iLCJleHAiOjE4NzMwMzE4NjksImlhdCI6MTcxNTM1MTg2OSwiZW1haWwiOiJhbmdlbGEubHVpc0B1bW9udGFuYS5lZHUifQ.YLxLG3mCbxvV8RTI2amQFiOum--sxt5q5PgL4UIWaOnsILZTCu1kBRbAkoroYJEs5vNeDOI_6Tgk2913yV7NiA"
 # )
@@ -163,22 +84,48 @@ summary(plantdiversity_bysite)
 # endDate 6/24/2013 - 12/1/2022
 
 
+
+
+
+
 ###############################################################################
 ## Look at diversity in beetles using neonDivData
 ###############################################################################
 
-beetles <- data_beetle
+beetlesDD <- neonDivData::data_beetle
 
-names(beetles)[which(names(beetles)=='value')] <- "abundance"    #"count per trap day"
+names(beetlesDD)[which(names(beetlesDD)=='value')] <- "abundance"    #"count per trap day"
 
-beetles <- beetles %>% 
+beetlesDD <- beetlesDD %>% 
   mutate_at(vars(taxon_id, taxon_name, taxon_rank, nativeStatusCode,
                  nlcdClass), factor)
 
-beetles$trappingDays <- as.numeric(beetles$trappingDays)
+beetlesDD$trappingDays <- as.numeric(beetlesDD$trappingDays)
+# what does this mean? How should it be accounted for?
 
-# again this is getting species richness per plot per day
-beetlesdiversity_byplotdate <- beetles %>%
+length(unique(beetlesDD$taxon_name))
+# [1] 793 unique taxa
+
+dat <- beetlesDD %>%
+  group_by(taxon_name,taxon_rank) %>%
+  summarise(unique(taxon_id))
+summary(dat$taxon_rank)
+# family      genus        order      species speciesgroup speciesGroup    subfamily     subgenus 
+# 4           39            1          665            1            2            1           21 
+# subspecies  tribe 
+# 54            5 
+
+# Clinidium apertum apertum ID'ed to subspecies but says genus, so change to subspecies
+beetlesDD$taxon_rank[which(beetlesDD$taxon_name=="Clinidium apertum apertum")] <- "subspecies"
+# all rest of those ID'ed to genus says genus sp.
+
+# will have to think more about all those not ID'ed to species - the subgenus adds extra complication
+
+### First initial look at diversity (counting each unique taxon_id as separate - 
+# which it isn't since genus and subgenus and subspecies etc)
+# this is getting species richness per plot per day
+# Also need to think about date is appropriate because sampling occasion could be over several days?
+beetlesdiversity_byplotdate <- beetlesDD %>%
   group_by(siteID, plotID, observation_datetime) %>%
   summarise(sp_richness = length(unique(taxon_name)), 
             any_invasives = any(nativeStatusCode=="I"),
@@ -199,7 +146,7 @@ beetlesdiversity_bysite <- beetlesdiversity_byplot %>%
 
 # joined with total species richness - all taxa ever recorded for the site 
 beetlesdiversity_bysite <- full_join(beetlesdiversity_bysite,
-  beetles %>%
+  beetlesDD %>%
     group_by(siteID) %>%
     summarise(total_sp_richness=length(unique(taxon_name))),
   by="siteID")
@@ -214,22 +161,33 @@ plot(beetlesdiversity_bysite$mean_mean_sp_richness, beetlesdiversity_bysite$tota
 #############################################################################
 
 
-birds <- data_bird
+birdsDD <- neonDivData::data_bird
 
-names(birds)[which(names(birds)=='value')] <- "abundance"    #"count of individuals"
+names(birdsDD)[which(names(birdsDD)=='value')] <- "abundance"    #"count of individuals"
 
-birds <- birds %>% 
+birdsDD <- birdsDD %>% 
   mutate_at(vars(siteID, plotID, taxon_id, taxon_name, taxon_rank, targetTaxaPresent, detectionMethod,
                  visualConfirmation, sexOrAge, observedHabitat, nativeStatusCode,
                  nlcdClass), factor)
 
-birds <- birds %>% 
+birdsDD <- birdsDD %>% 
   mutate_at(vars(pointCountMinute, observerDistance, startCloudCoverPercentage, endCloudCoverPercentage, startRH,
                  endRH, observedAirTemp, kmPerHourObservedWindSpeed), as.numeric)
 
 
+length(unique(birdsDD$taxon_name))
+# [1] 584 unique taxa
 
-birdsdiversity_byplotdate <- birds %>%
+dat <- birdsDD %>%
+  group_by(taxon_name,taxon_rank) %>%
+  summarise(unique(taxon_id))
+summary(dat$taxon_rank)
+# class       family      genus      species speciesGroup    subfamily   subspecies 
+# 1           16           16          539            3            1            8 
+
+
+#### First look, but will need to deal with sampling and ID issues:
+birdsdiversity_byplotdate <- birdsDD %>%
   group_by(siteID, plotID, observation_datetime) %>%
   summarise(sp_richness = length(unique(taxon_name)), 
             total_abundance = sum(abundance, na.rm=TRUE))
@@ -246,7 +204,7 @@ birdsdiversity_bysite <- birdsdiversity_byplot %>%
 
 # joined with total species richness - all taxa ever recorded for the site 
 birdsdiversity_bysite <- full_join(birdsdiversity_bysite,
-                                   birds %>%
+                                   birdsDD %>%
                                     group_by(siteID) %>%
                                     summarise(total_sp_richness=length(unique(taxon_name))),
                                      by="siteID")
@@ -254,7 +212,7 @@ birdsdiversity_bysite <- full_join(birdsdiversity_bysite,
 summary(birdsdiversity_bysite)
 
 plot(birdsdiversity_bysite$mean_mean_sp_richness, birdsdiversity_bysite$total_sp_richness)
-# not bad
+
 
 
 #############################################################################
@@ -264,16 +222,26 @@ plot(birdsdiversity_bysite$mean_mean_sp_richness, birdsdiversity_bysite$total_sp
 # unit is
 # "unique individuals per 100 trap nights per plot per month"
 
-smammals <- neonDivData::data_small_mammal
+smammalsDD <- neonDivData::data_small_mammal
 
-names(smammals)[which(names(smammals)=='value')] <- "abundance"    
+names(smammalsDD)[which(names(smammalsDD)=='value')] <- "abundance"    
 
-smammals <- smammals %>% 
+smammalsDD <- smammalsDD %>% 
   mutate_at(vars(siteID, plotID, taxon_id, taxon_name, taxon_rank, variable_name,
                  unit, nativeStatusCode, nlcdClass), factor)
 
+length(unique(smammalsDD$taxon_name))
+# [1] 154 unique taxa
 
-smammalsdiversity_byplotdate <- smammals %>%
+dat <- smammalsDD %>%
+  group_by(taxon_name,taxon_rank) %>%
+  summarise(unique(taxon_id))
+summary(dat$taxon_rank)
+# genus    species subspecies 
+# 18        135          1 
+
+### First look at species richness
+smammalsdiversity_byplotdate <- smammalsDD %>%
   group_by(siteID, plotID, observation_datetime) %>%
   summarise(sp_richness = length(unique(taxon_name)), 
             total_abundance = sum(abundance, na.rm=TRUE))
@@ -290,7 +258,7 @@ smammalsdiversity_bysite <- smammalsdiversity_byplot %>%
 
 # joined with total species richness - all taxa ever recorded for the site 
 smammalsdiversity_bysite <- full_join(smammalsdiversity_bysite,
-                                      smammals %>%
+                                      smammalsDD %>%
                                      group_by(siteID) %>%
                                      summarise(total_sp_richness=length(unique(taxon_name))),
                                    by="siteID")
@@ -327,6 +295,7 @@ ggplot(dat, aes(x = group, y = total_sp_richness, col=group)) +
 
 ##############################################################################
 ## Productivity
+## Raw data downloaded using neonUtilities
 ##############################################################################
 
 # prod <- loadByProduct("DP1.10023.001", 
@@ -389,7 +358,7 @@ ggplot(dat, aes(x = type, y = biomass, col=type)) +
 
 
 summary(factor(prod$hbp_perbout$exclosure))
-# some plots have an exclosure?
+# some plots have an exclusores - to exclude cattle and were measured multiple times per year
 
 
 ##############################################################################
@@ -426,10 +395,9 @@ title("NEON terrestrial sites")
 # export data 
 write.csv(plantsDD, file="AllPlantData.csv", row.names = F)
 write.csv(sitesummary ,file="SiteSummaries.csv",  row.names = F)
-write.csv(beetles ,file="AllBeetleData.csv",  row.names = F)
-write.csv(birds ,file="AllBirdData.csv",  row.names = F)
-write.csv(beetles ,file="AllBeetleData.csv",  row.names = F)
-write.csv(smammals ,file="AllSmammalData.csv",  row.names = F)
+write.csv(beetlesDD ,file="AllBeetleData.csv",  row.names = F)
+write.csv(birdsDD ,file="AllBirdData.csv",  row.names = F)
+write.csv(smammalsDD ,file="AllSmammalData.csv",  row.names = F)
 write.csv(biomass ,file="AllProductivityData.csv",  row.names = F)
 write.csv(prod$hbp_perbout, file="AllProductivitySampleData.csv", row.names=F)
 
@@ -452,11 +420,17 @@ sort(unique(weather$wss_daily_humid$siteID))
 sort(unique(weather$wss_daily_temp$siteID))
 # only 20 sites
 
+# won't use this. instead got Daymet data. see other file
+
+
+
+
+
 ##############################################################################
 # Soil geochem and properties
+# Only done once - intial characterization
 ##############################################################################
 
-# this is just initial characterization:
 soil <- loadByProduct("DP1.10047.001",
                       token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzI1NiJ9.eyJhdWQiOiJodHRwczovL2RhdGEubmVvbnNjaWVuY2Uub3JnL2FwaS92MC8iLCJzdWIiOiJhbmdlbGEubHVpc0B1bW9udGFuYS5lZHUiLCJzY29wZSI6InJhdGU6cHVibGljIiwiaXNzIjoiaHR0cHM6Ly9kYXRhLm5lb25zY2llbmNlLm9yZy8iLCJleHAiOjE4NzMwMzE4NjksImlhdCI6MTcxNTM1MTg2OSwiZW1haWwiOiJhbmdlbGEubHVpc0B1bW9udGFuYS5lZHUifQ.YLxLG3mCbxvV8RTI2amQFiOum--sxt5q5PgL4UIWaOnsILZTCu1kBRbAkoroYJEs5vNeDOI_6Tgk2913yV7NiA"
 )
@@ -468,9 +442,6 @@ soil_perplot %>%
   summarise(n.site = length(unique(siteID)))
 
 
-# basic data
-save(plantsDD, beetles, birds, smammals, prod, soil, file="BasicNEONdata.RData")
-# eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzI1NiJ9.eyJhdWQiOiJodHRwczovL2RhdGEubmVvbnNjaWVuY2Uub3JnL2FwaS92MC8iLCJzdWIiOiJhbmdlbGEubHVpc0B1bW9udGFuYS5lZHUiLCJzY29wZSI6InJhdGU6cHVibGljIiwiaXNzIjoiaHR0cHM6Ly9kYXRhLm5lb25zY2llbmNlLm9yZy8iLCJleHAiOjE4NzMwMzE4NjksImlhdCI6MTcxNTM1MTg2OSwiZW1haWwiOiJhbmdlbGEubHVpc0B1bW9udGFuYS5lZHUifQ.YLxLG3mCbxvV8RTI2amQFiOum--sxt5q5PgL4UIWaOnsILZTCu1kBRbAkoroYJEs5vNeDOI_6Tgk2913yV7NiA
 
 names(soil$spc_biogeochem)
 
@@ -495,6 +466,14 @@ summary(biogeo_n_plot_dates)
 # dates range from 9/21/2015 to 10/20/2021
 
 write.csv(soil$spc_biogeochem, file="SoilBiogeochem_initial.csv")
+
+
+
+
+
+##############################################################################
+# Soil Data done periodically along with microbial sampling
+##############################################################################
 
 soil_periodic <- loadByProduct("DP1.10086.001",
                       token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzI1NiJ9.eyJhdWQiOiJodHRwczovL2RhdGEubmVvbnNjaWVuY2Uub3JnL2FwaS92MC8iLCJzdWIiOiJhbmdlbGEubHVpc0B1bW9udGFuYS5lZHUiLCJzY29wZSI6InJhdGU6cHVibGljIiwiaXNzIjoiaHR0cHM6Ly9kYXRhLm5lb25zY2llbmNlLm9yZy8iLCJleHAiOjE4NzMwMzE4NjksImlhdCI6MTcxNTM1MTg2OSwiZW1haWwiOiJhbmdlbGEubHVpc0B1bW9udGFuYS5lZHUifQ.YLxLG3mCbxvV8RTI2amQFiOum--sxt5q5PgL4UIWaOnsILZTCu1kBRbAkoroYJEs5vNeDOI_6Tgk2913yV7NiA"
@@ -522,8 +501,10 @@ write.csv(soil_periodic$sls_soilChemistry, file="SoilChemPeriodic.csv")
 write.csv(soil_periodic$sls_soilMoisture, file="SoilMoisturePeriodic.csv")
 write.csv(soil_periodic$sls_soilpH, file="SoilpHPeriodic.csv")
 
+
+
 ##############################################################################
-# Microbial Data
+# Microbial MetaData
 ##############################################################################
 
 
@@ -533,6 +514,14 @@ microbial <- loadByProduct("DP1.10081.001",
 )
 
 
+
+###############################################################################
+# Save basic data for further Analyses
+###############################################################################
+
+save(plantsDD, beetlesDD, birdsDD, smammalsDD, prod, soil, 
+     soil_periodic, microbial
+     , file="BasicNEONdata.RData")
 
 
 
