@@ -1,0 +1,362 @@
+---
+title: "Exploring NEON Plant and Soil Sampling"
+author: "Angie Luis"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE, results='hide'}
+knitr::opts_chunk$set(echo = FALSE)
+
+setwd("~/Documents/NEON data/NEONecology")
+load("ReducedCleanPlantSoilData.RData")
+
+library(tidyverse)
+library(kableExtra)
+library(neonDivData)
+library(sf)
+library(scales)
+library(tigris)
+library(data.table)
+
+
+sitesDD <- neonDivData::neon_sites
+
+```
+
+
+I'm using the plant cover data from the neonDivData package and raw productivity and periodic soil sampling datasets downloaded with the neonUtilities package. I removed nlcdClass: cultivatedCrops, pastureHay, woodyWetlands, and emergentHerbaceousWetlands. I cut the data to 2019 and after. I only included June, July, and August in the plant sampling. For Soil Periodic, I cut to sampleTiming=="peakGreenness" (but this still includes some sampling outside June-Aug). 
+
+```{r summary, include=FALSE, echo=FALSE, warning=FALSE, results='hide', message=FALSE}
+
+
+pc.sitehabitat <- plant.cover %>%
+  group_by(siteID, nlcdClass) %>%
+  summarise(n.cover.plots = length(unique(plotID)))
+
+prod.sitehabitat <- productivity %>%
+  group_by(siteID, nlcdClass) %>%
+  summarise(n.prod.plots = length(unique(plotID)))
+
+cover.productivity.sitehabitat <- full_join(pc.sitehabitat, prod.sitehabitat)
+
+
+soilsamples.sitehabitat <- soil.periodic.merge %>%
+  group_by(siteID, nlcdClass) %>%
+  summarise(n.chem.samples=length(unique(sampleID[which(!is.na(CNratio))])),
+            n.mois.samples=length(unique(sampleID[which(!is.na(soilMoisture))])),
+            n.pH.samples = length(unique(sampleID[which(!is.na(soilInWaterpH))])))
+
+
+plant.soil.sitehab.samples <- full_join(cover.productivity.sitehabitat, soilsamples.sitehabitat)
+plant.soil.sitehab.samples <- replace(plant.soil.sitehab.samples, is.na(plant.soil.sitehab.samples), 0)
+
+sites <- sort(unique(as.character(plant.soil.sitehab.samples$siteID)))
+
+
+
+dtc <- sitesDD[match(sites, sitesDD$siteID),]
+dtc$color <-  hue_pal()(length(unique(dtc$siteID))) 
+dt <- dtc[,c(2,7,6)]
+
+## use shift_geometry to make map that has the territories
+us_states <- states(cb = TRUE, resolution = "20m") %>%
+  shift_geometry()
+
+DT <- data.table(as.data.frame(dt))
+
+DT_sf = st_as_sf(DT, coords = c("Longitude", "Latitude"), 
+                 crs = 4326, agr = "constant")
+
+new_site_coords <- DT_sf %>%
+  shift_geometry()
+
+```
+
+
+```{r map, echo=FALSE, warning=FALSE, message=FALSE,  out.width='150%'}
+
+
+ggplot() +
+  geom_sf(data = new_site_coords, aes(colour = dtc$color[match(new_site_coords$siteID,dtc$siteID)])) +
+  geom_sf(data = us_states, fill = NA, color = "black", size = 0.1) +
+  geom_sf_label(data = new_site_coords, 
+               aes(colour=dtc$color[match(new_site_coords$siteID,dtc$siteID)], label=siteID), label.size = 0.1, nudge_y = -110000, size=2.5) +
+               #scale_fill_viridis_c() +
+  theme_void(base_size = 16) +
+  ggtitle("NEON terrestrial sites") +
+    theme(plot.title = element_text(hjust = 0.5), legend.position = 'none') +
+  scale_colour_identity()
+
+
+
+
+```
+
+
+## Summary of Sampling by Site-Habitat
+
+Here is a summary of sampling of each site-habitat combo across datasets for plant cover, productivity and periodic soils. 'n.cover.plots' is the number of unique plots sampled for plant cover (can be over 1 or multiple years and can have different number of subplots, etc). 'n.prod.plots' is the number of unique plots sampled for productivity (can be over 1 or multiple years and include multiple samples per season within and across subplots). "n.chem", "n.mois", and "n.pH" are number of soil samples (by 'sampleID') analyzed for the different soil attributes. I couldn't add microbial data to this because it is only available through 2018 right now but supposedly will be available soon?
+
+```{r table, echo=FALSE, warning=FALSE, message=FALSE,  out.width='150%'}
+
+plant.soil.sitehab.samples$state <- dtc$State[match(plant.soil.sitehab.samples$siteID,
+                                                    dtc$siteID)]
+plant.soil.sitehab.samples <- plant.soil.sitehab.samples[,c(1,8,2:7)]
+psss.col <- dtc$color[match(plant.soil.sitehab.samples$siteID,dtc$siteID)]
+
+plant.soil.sitehab.samples %>%
+  #mutate(siteID = cell_spec(siteID, color = psss.col)) %>%
+  kable() %>%
+
+kable_styling(bootstrap_options = c("striped", "hover"), fixed_thead = T, full_width = F) %>%
+kable_styling(position = "left", full_width = FALSE) %>%
+     column_spec(1, bold = TRUE, border_right = TRUE, color = "black", background = "lightgrey")
+
+
+
+```
+
+
+<br/>
+<br/>
+
+## Exploring sampling of Productivity
+
+#### how many productivity samples per plot per year?
+```{r ppy, echo=FALSE, warning=FALSE, message=FALSE}
+
+# how many productivity samples per plot per year?
+prod.plotyear.samples <- productivity %>%
+  group_by(siteID, plotID, nlcdClass, year(collectDate)) %>%
+  summarise(n.subplots = length(unique(subplotID)),
+    n.samples = length(unique(sampleID))) 
+summary(factor(prod.plotyear.samples$n.samples))            
+#   1    2    3    4    5    6    7    8    9 
+# 743 1047   47   93    1   21    9    1   10 
+# usually 2 samples per plot per year, but again a range
+#hist(summary(prod.plotyear.samples$n.samples))
+
+```
+[Top row is the number of samples, and bottom row is how many plot-years had that many of that number of samples. E.g., 1047 plot-years had 2 samples, and 93 had 4 samples. ]
+Usually 2 samples per plot per year, but a range of up to 9
+
+#### how many productivity subplots per plot per year?
+```{r psy, echo=FALSE, warning=FALSE, message=FALSE}
+
+summary(factor(prod.plotyear.samples$n.subplots))            
+#   1   2   3 
+# 995 976   1 
+# sometimes 1, sometimes 2 subplots per plot per year
+#hist(summary(prod.plotyear.samples$n.subplots))
+
+```
+sometimes 1, sometimes 2 subplots per plot per year (once 3)
+
+
+#### how many productivity samples per subplot per year?
+```{r ppsy, echo=FALSE, warning=FALSE, message=FALSE}
+
+# number of samples per subplot per year
+prod.subplotyear.samples <- productivity %>%
+  group_by(siteID, plotID, subplotID, nlcdClass, year=year(collectDate)) %>%
+  summarise(n.samples = length(unique(sampleID))) 
+summary(factor(prod.subplotyear.samples$n.samples))            
+#    1    2    3    4    5    6    7    9 
+# 2674  102   47   87    1   21    9    9 
+#hist(summary(prod.subplotyear.samples$n.samples))            
+
+```
+Mostly 1 but up to 9.
+
+####  do the ones that have more than 1 sample per subplot per year have exclosure treatments?
+
+```{r rpsx1, echo=FALSE, warning=FALSE, message=FALSE}
+
+ps <- unique(prod.subplotyear.samples$plotID[which(prod.subplotyear.samples$n.samples>1)])
+
+y <- productivity %>%
+  filter(plotID %in% ps) %>%
+  group_by(siteID, plotID, year=year(collectDate)) %>%
+  summarise(any.Y = factor(ifelse(length(which(exclosure=="Y"))>0, "Y","N")))
+
+summary(y$any.Y)
+
+# N   Y 
+# 52 251 
+
+```
+Not all of them, but most (5/6).
+
+### More about the exclosure treatments
+
+####  Which sites have exclosures?
+```{r psx2, echo=FALSE, warning=FALSE, message=FALSE}
+
+as.character(unique(productivity$siteID[productivity$exclosure=="Y"]))
+    
+  
+
+```
+12 out of 41 sites have at least one exclosure over the time period.
+
+#### What habitat types?
+```{r psx3, echo=FALSE, warning=FALSE, message=FALSE}
+
+dat <- productivity %>%
+  filter(exclosure=="Y") %>%
+  group_by(siteID, nlcdClass, plotID) %>%
+  summarise(n.clipIDs= length(unique(clipID)))
+unique(dat$nlcdClass)
+  
+
+```
+From 1 to 9 clipIDs from within exlcosures per site-habitat.
+
+#### What's the spatial scale?
+
+Here's an example:
+
+```{r psxy, echo=FALSE, warning=FALSE, message=FALSE}
+
+# Is exclosure defined at the plot level or subplot?
+
+dat <- productivity %>%
+  group_by(siteID, plotID, year=year(collectDate)) %>%
+  summarise(num.Y = length(which(exclosure=="Y")),
+            num.N = length(which(exclosure=="N")))
+# summary(dat)
+# dat[which(dat$num.Y>0 & dat$num.N>0),]
+# plots for which some subplot some year have more than 1 sample
+
+p <- "CLBJ_004" # "CLBJ_010"   
+y <- 2021       # 2019        
+
+productivity %>%
+  mutate(year = year(collectDate)) %>%
+  select(plotID, subplotID, year, collectDate, exclosure) %>%
+  filter(plotID==p, year==y) %>%
+  distinct()
+
+
+
+dat <- productivity %>%
+    mutate(year = year(collectDate)) %>%
+    filter(plotID==p, year==y) %>%
+    group_by(plotID, subplotID, year, collectDate, clipID) %>%
+    summarise(excl = factor(ifelse(length(unique(exclosure))==1, "1 result", "more")))
+
+  
+```
+Same plotID and subplotID with some dates having both exclosure and no exclosure. There were more than 1 clip samples taken per subplot and exclosure must be at a finer spatial scale than subplot. The same clipID or sampleID don't have both a Y or N for exclosure. 
+
+#### For every Y exclosure clipID is there a corresponding N for the subplot for the date?
+(or within a date range?)
+```{r psx4, echo=FALSE, warning=FALSE, message=FALSE}
+excl.plots <- unique(productivity$plotID[which(productivity$exclosure=="Y")])
+
+dat <- productivity %>%
+  filter(plotID %in% excl.plots) %>%
+  group_by(plotID, subplotID, collectDate) %>%
+  summarise(num.Y = length(which(exclosure =="Y")), # this won't give unique samples (because more than 1 row per sample)
+            num.N = length(which(exclosure=="N")))
+dat <- dat %>%
+  filter(num.Y !=0)
+
+dat[dat$num.N==0,]
+
+
+dat2 <- productivity %>%
+  filter(plotID %in% excl.plots) %>%
+  group_by(plotID, year = year(collectDate)) %>%
+  summarise(num.Y = length(which(exclosure =="Y")),
+            num.N = length(which(exclosure=="N")))
+length(which(dat2$num.N==0))
+
+```
+Most of the time, for every Y there is a (At least 1) corresponding N on the same subplot on the same date. But not for 3. [but within the same year]
+
+**Overall, for Productivity, I will average total biomass per clipID per plot per year. If exclosures present, I will assume that this average will be a mix of exclosure and no exclosure. For clipIDs with exclosures, it looks like they only quantified "All herbaceous plants", but for others they separated out into groups. I will assume that a sum over all categories is equivalent to "all", for a general productivity measure.**
+
+May later want to quantify specific functional groups, but will have to think about that later.
+
+<br/>
+<br/>
+
+## Plant Cover 
+
+### How many subplots per plot per year?
+These are all per year, and based on the subplotID name, which looks like for example, "41_1_4" for 1m^2^ subplot and "41_10_4" for the 10m^2^ subplot.
+
+
+#### how many 100m^2^ subplots per plot?
+```{r cov3, echo=FALSE, warning=FALSE, message=FALSE}
+plant.100mplotyears <- plant.cover[grep("_100",plant.cover$subplotID),] %>%
+  group_by(siteID, plotID, year=year(observation_datetime)) %>%
+  summarise(num.100m2.plots=length(unique(subplotID)))
+summary(factor(plant.100mplotyears$num.100m2.plots))
+# 1    2    3    4 
+# 4    6   68 1399 
+
+# example 
+# p="BARR_001"
+# y=2022
+# 
+# plant.cover %>%
+#   filter(plotID==p, year(observation_datetime)==y) %>%
+  
+
+```
+There should be 4 and were most of the time, but sometimes less.
+
+#### how many 10m^2^ subplots per plot?
+```{r cov1, echo=FALSE, warning=FALSE, message=FALSE}
+
+
+# how many 10m2 plots per plot?
+plant.10mplotyears <- plant.cover[grep("_10_",plant.cover$subplotID),] %>%
+  group_by(siteID, plotID, year=year(observation_datetime)) %>%
+  summarise(num.10m2.plots=length(unique(subplotID)))
+summary(factor(plant.10mplotyears$num.10m2.plots))
+# 1    2    3    4    5    6 
+# 2    2   15   34   89 1335 
+```
+mostly 6 subplots but a few with less
+
+
+I think it's ok that there are sometimes fewer 10m^2^ or 100m^2^ subplots per plot than expected (6 or 4). Because if there was no species that hadn't been identified previously in the smaller subplots, then there would be no line of data. It's possible that a line of comments was removed when cleaning from raw data to divData.
+
+However, 1m^2^ not ok. Those should all be quantified for % cover so shouldn't be any missing.
+
+
+#### how many 1m^2^ subplots per plot?
+```{r cov2, echo=FALSE, warning=FALSE, message=FALSE}
+
+plant.1mplotyears <- plant.cover[grep("_1_",plant.cover$subplotID),] %>%
+  group_by(siteID, plotID, year=year(observation_datetime)) %>%
+  summarise(num.1m2.plots=length(unique(subplotID)))
+summary(factor(plant.1mplotyears$num.1m2.plots))
+# 1    2    3    4    5    6 
+# 2    9   24   53  114 2768 
+
+# example
+p="ABBY_019"
+y=2020
+
+dat <- plant.cover %>%
+  filter(plotID==p, year(observation_datetime)==y)
+
+# as.data.frame(dat)
+# 
+# unique(dat$subplotID)
+
+```
+Looking at one example, plot="ABBY_019", year=2020: there were 4 1m^2^ subplots and no larger (10 or 100) subplots. That should be eliminated. **I will eliminate all the plot-years that didn't have 6 1m^2^-subplots.** (3% of cover data.) Now called reduced.plant.cover.
+
+
+
+**The unit I am calculating is species richness per plot per year. So total number of unique species identified at any of the subplots within a plot per year.**
+
+We can do rarefaction per site/habitat or something else to get a measure to use.
+
+
