@@ -9,7 +9,7 @@ output: html_document
 knitr::opts_chunk$set(echo = FALSE)
 
 setwd("~/Documents/NEON data/NEONecology")
-load("ReducedCleanPlantSoilData.RData")
+load("ReducedMergedPlantSoilData.RData")
 
 library(tidyverse)
 library(kableExtra)
@@ -25,12 +25,12 @@ sitesDD <- neonDivData::neon_sites
 ```
 
 
-I'm using the plant cover data from the neonDivData package and raw productivity and periodic soil sampling datasets downloaded with the neonUtilities package. I removed nlcdClass: cultivatedCrops, pastureHay, woodyWetlands, and emergentHerbaceousWetlands. I cut the data to 2019 and after. I only included June, July, and August in the plant sampling. For Soil Periodic, I cut to sampleTiming=="peakGreenness" (but this still includes some sampling outside June-Aug). 
+I'm using the plant cover data from the neonDivData package and raw productivity and periodic soil sampling datasets downloaded with the neonUtilities package. I removed nlcdClass: cultivatedCrops, pastureHay, woodyWetlands, and emergentHerbaceousWetlands. I cut the data to 2019 and after. I only included June, July, and August in the plant sampling. For Soils / microbes, here I'm showing sampleTiming=="peakGreenness", but this still includes some sampling outside June-Aug, so we need to discuss. 
 
 ```{r summary, include=FALSE, echo=FALSE, warning=FALSE, results='hide', message=FALSE}
 
 
-pc.sitehabitat <- plant.cover %>%
+pc.sitehabitat <- reduced.plant.cover %>%
   group_by(siteID, nlcdClass) %>%
   summarise(n.cover.plots = length(unique(plotID)))
 
@@ -40,15 +40,26 @@ prod.sitehabitat <- productivity %>%
 
 cover.productivity.sitehabitat <- full_join(pc.sitehabitat, prod.sitehabitat)
 
-
-soilsamples.sitehabitat <- soil.periodic.merge %>%
+# filtering by peak greenness but discuss
+soil.p.samples.sitehabitat <- soil.periodic.merge %>%
+  filter(sampleTiming=="peakGreenness") %>%
   group_by(siteID, nlcdClass) %>%
-  summarise(n.chem.samples=length(unique(sampleID[which(!is.na(CNratio))])),
-            n.mois.samples=length(unique(sampleID[which(!is.na(soilMoisture))])),
-            n.pH.samples = length(unique(sampleID[which(!is.na(soilInWaterpH))])))
+  summarise(n.pchem = length(unique(sampleID[which(!is.na(CNratio))])), # there are more if don't need both C and N
+            n.pmois = length(unique(sampleID[which(!is.na(soilMoisture))])),
+            n.ppH = length(unique(sampleID[which(!is.na(soilInWaterpH))])),
+            n.ITSseq = length(unique(sampleID[which(ITS.sequence=="Y" & ITS.qaqcStatus=="Pass")])))
 
 
-plant.soil.sitehab.samples <- full_join(cover.productivity.sitehabitat, soilsamples.sitehabitat)
+soil.i.samples.sitehabitat <- soil.initial %>%
+  group_by(siteID, nlcdClass) %>%
+  summarise(n.iOlsenP = length(unique(plotID[which(!is.na(OlsenPExtractable))])), # there are more if don't need both C and N
+            n.iMehlP = length(unique(plotID[which(!is.na(MehlichIIITotP))])),
+            n.icaNh4d = length(unique(plotID[which(!is.na(caNh4d))])),
+            n.itext = length(unique(plotID[which(!is.na(sandTotal))])))
+
+
+plant.soil.sitehab.samples <- full_join(cover.productivity.sitehabitat, soil.p.samples.sitehabitat)
+plant.soil.sitehab.samples <- full_join(plant.soil.sitehab.samples, soil.i.samples.sitehabitat)
 plant.soil.sitehab.samples <- replace(plant.soil.sitehab.samples, is.na(plant.soil.sitehab.samples), 0)
 
 sites <- sort(unique(as.character(plant.soil.sitehab.samples$siteID)))
@@ -96,23 +107,63 @@ ggplot() +
 
 ## Summary of Sampling by Site-Habitat
 
-Here is a summary of sampling of each site-habitat combo across datasets for plant cover, productivity and periodic soils. 'n.cover.plots' is the number of unique plots sampled for plant cover (can be over 1 or multiple years and can have different number of subplots, etc). 'n.prod.plots' is the number of unique plots sampled for productivity (can be over 1 or multiple years and include multiple samples per season within and across subplots). "n.chem", "n.mois", and "n.pH" are number of soil samples (by 'sampleID') analyzed for the different soil attributes. I couldn't add microbial data to this because it is only available through 2018 right now but supposedly will be available soon?
+Here is a summary of sampling of each site-habitat combo across datasets for plant cover, productivity, periodic and initial soils, ITS sequences. This is using the 'reduced.plant.cover' after removing a few - see below. 'n.cover.plots' is the number of unique plots sampled for plant cover (can be over 1 or multiple years and can have different number of subplots, etc). 'n.prod.plots' is the number of unique plots sampled for productivity (can be over 1 or multiple years and include multiple samples per season within and across subplots). "n.pchem", "n.pmois", and "n.ppH" are number of periodic soil samples (by 'sampleID') analyzed for the different soil attributes (chemistriy, moisture, pH). "n.ITSseq" is number of soil samples sequenced for microbes for ITS. "iOlsenP", "iMehlP", "ichNh4d", and "itext" are number of plots sampled during the initial soil characterization (done once) for Olsen P, Mehlich P, chNh4d, and texture. 
 
 ```{r table, echo=FALSE, warning=FALSE, message=FALSE,  out.width='150%'}
 
 plant.soil.sitehab.samples$state <- dtc$State[match(plant.soil.sitehab.samples$siteID,
                                                     dtc$siteID)]
-plant.soil.sitehab.samples <- plant.soil.sitehab.samples[,c(1,8,2:7)]
+plant.soil.sitehab.samples <- plant.soil.sitehab.samples[,c(1,13,2:12)]
 psss.col <- dtc$color[match(plant.soil.sitehab.samples$siteID,dtc$siteID)]
 
+#plant.soil.sitehab.samples <- plant.soil.sitehab.samples[order(c(plant.soil.sitehab.samples$siteID, plant.soil.sitehab.samples$nlcdClass)),]
+
 plant.soil.sitehab.samples %>%
-  #mutate(siteID = cell_spec(siteID, color = psss.col)) %>%
   kable() %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), fixed_thead = T, full_width = F) %>%
+  kable_styling(font_size=13, position = "left", full_width = FALSE) %>%
+  column_spec(1, bold = TRUE, border_right = TRUE, color = psss.col) %>% #, background = "grey85") %>%
+  column_spec(4, color = ifelse(plant.soil.sitehab.samples$n.cover.plots==0, "firebrick2", "black"),
+              bold = ifelse(plant.soil.sitehab.samples$n.cover.plots==0, TRUE, FALSE)) %>%
+  column_spec(5, color = ifelse(plant.soil.sitehab.samples$n.prod.plots==0, "firebrick2", "black"),
+              bold = ifelse(plant.soil.sitehab.samples$n.prod.plots==0, TRUE, FALSE)) %>%
+  column_spec(6, color = ifelse(plant.soil.sitehab.samples$n.pchem==0, "firebrick2", "black"),
+              bold = ifelse(plant.soil.sitehab.samples$n.pchem==0, TRUE, FALSE)) %>%
+  column_spec(7, color = ifelse(plant.soil.sitehab.samples$n.pmois==0, "firebrick2", "black"),
+              bold = ifelse(plant.soil.sitehab.samples$n.pmois==0, TRUE, FALSE)) %>%
+  column_spec(8, color = ifelse(plant.soil.sitehab.samples$n.ppH==0, "firebrick2", "black"),
+              bold = ifelse(plant.soil.sitehab.samples$n.ppH==0, TRUE, FALSE)) %>%
+  column_spec(9, color = ifelse(plant.soil.sitehab.samples$n.ITSseq==0, "firebrick2", "black"),
+              bold = ifelse(plant.soil.sitehab.samples$n.ITSseq==0, TRUE, FALSE)) %>%
+  column_spec(10, color = ifelse(plant.soil.sitehab.samples$n.iOlsenP==0, "firebrick2", "black"),
+              bold = ifelse(plant.soil.sitehab.samples$n.iOlsenP==0, TRUE, FALSE)) %>%
+  column_spec(11, color = ifelse(plant.soil.sitehab.samples$n.iMehlP==0, "firebrick2", "black"),
+              bold = ifelse(plant.soil.sitehab.samples$n.iMehlP==0, TRUE, FALSE)) %>%
+  column_spec(12, color = ifelse(plant.soil.sitehab.samples$n.icaNh4d==0, "firebrick2", "black"),
+              bold = ifelse(plant.soil.sitehab.samples$n.icaNh4d==0, TRUE, FALSE)) %>%
+  column_spec(13, color = ifelse(plant.soil.sitehab.samples$n.itext==0, "firebrick2", "black"),
+              bold = ifelse(plant.soil.sitehab.samples$n.itext==0, TRUE, FALSE)) 
 
-kable_styling(bootstrap_options = c("striped", "hover"), fixed_thead = T, full_width = F) %>%
-kable_styling(position = "left", full_width = FALSE) %>%
-     column_spec(1, bold = TRUE, border_right = TRUE, color = "black", background = "lightgrey")
+    
+    # column_spec(1, bold = TRUE, border_right = TRUE, color = "black", background = "lightgrey")
+   
 
+```
+
+See "PlantSoilSiteHabitatYearSampling.xlsx" in UMT Box folder for same thing but also separated out by year.
+
+## For each habitat, how many sites have ITS microbial sequence data and other variables?
+This many sites have at least one year where there is data for plant cover, productivity, ITS sequences, initial soil sampling for Mehlich P, and texture. (I removed periodic soils for this - but there will be some periodic soil data for all these as well since happens at same time as microbial sampling, just maybe not every variable e.g, might have moisture but not chemistry)
+```{r sh, echo=FALSE, warning=FALSE, message=FALSE}
+
+ 
+replace(plant.soil.sitehab.samples, plant.soil.sitehab.samples==0, NA) %>%
+  select(c(siteID, nlcdClass, n.cover.plots, n.prod.plots, n.ITSseq, n.iMehlP, n.itext)) %>%
+  drop_na() %>%
+  group_by(nlcdClass) %>%
+  summarise(n.sites = n()) %>%
+  kable() %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), fixed_thead = T, full_width = F)
 
 
 ```
@@ -353,6 +404,36 @@ dat <- plant.cover %>%
 ```
 Looking at one example, plot="ABBY_019", year=2020: there were 4 1m^2^ subplots and no larger (10 or 100) subplots. That should be eliminated. **I will eliminate all the plot-years that didn't have 6 1m^2^-subplots.** (3% of cover data.) Now called reduced.plant.cover.
 
+
+
+#### how many of any size subplots per plot?
+```{r cov4, echo=FALSE, warning=FALSE, message=FALSE}
+
+plant.anysubplotyears <- reduced.plant.cover %>%
+  group_by(siteID, plotID, year=year(observation_datetime)) %>%
+  summarise(num.subplots=length(unique(subplotID)))
+summary(factor(plant.anysubplotyears$num.subplots))
+#    6   11   12   13   14   15   16 
+# 1410    2    6    4   19   84 1244 
+
+
+
+```
+
+Since, here I already removed the plot-years that didn’t have 6 1m^2^-subplots, the ones here that have 6 are ones where there aren't any larger (10 and 100sqm) plots in the data. (Could be because they didn't ID any additional species at the larger plots that weren't in the 1m^2^ plot.)
+
+#### After cutting to June/July/August is there more than one bout per plot per year?
+What they called "boutNumber"
+
+```{r bout, echo=FALSE, warning=FALSE, message=FALSE}
+dat <- reduced.plant.cover %>%
+  group_by(siteID, plotID, year=year(observation_datetime)) %>%
+  summarise(n.bouts = length(unique(boutNumber)))
+summary(factor(dat$n.bouts))
+```
+No. There is only 1 bout per plot per year now.
+
+<br/>
 
 
 **The unit I am calculating is species richness per plot per year. So total number of unique species identified at any of the subplots within a plot per year.**
