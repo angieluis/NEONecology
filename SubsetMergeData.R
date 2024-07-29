@@ -222,7 +222,8 @@ soil.chem.ave <- soil.chem %>%
   summarise(d15N = mean(d15N, na.rm=TRUE), 
             organicd13C = mean(organicd13C, na.rm=TRUE),
             nitrogenPercent = mean(nitrogenPercent, na.rm = TRUE),
-            organicCPercent = mean(organicCPercent, na.rm = TRUE))
+            organicCPercent = mean(organicCPercent, na.rm = TRUE),
+            CNratio = mean(CNratio, na.rm = TRUE))
             
   
 
@@ -359,7 +360,7 @@ soil.periodic.merge <- left_join(soil.periodic.merge,
                                    select(geneticSampleID, qaqcStatus))
 names(soil.periodic.merge)[which(names(soil.periodic.merge)=="qaqcStatus")] <- "ITS.qaqcStatus"
 soil.periodic.merge$ITS.sequence = factor(ifelse(is.na(soil.periodic.merge$ITS.qaqcStatus), "N", "Y"))
-soil.periodic.merge <- soil.periodic.merge[,c(1:41, 43, 42)]
+soil.periodic.merge <- soil.periodic.merge[,c(1:42, 44, 43)]
 
 
 ### Remove crops, pasture, wetlands -----------------------------------------#
@@ -488,7 +489,7 @@ soil.initial <- soil.initial %>%
 
 ###############################################################################
  
-save(plant.cover, productivity, soil.periodic.merge, 
+save(plant.cover, reduced.plant.cover, productivity, soil.periodic.merge, 
      soil.initial, microbe.ITS.metadata,
      file="ReducedMergedPlantSoilData.RData")
 
