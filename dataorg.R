@@ -504,12 +504,13 @@ write.csv(soil_periodic$sls_soilpH, file="SoilpHPeriodic.csv")
 
 
 ##############################################################################
-# Microbial MetaData
+# Soil microbe sequence metadata
 ##############################################################################
 
-
-
-microbial <- loadByProduct("DP1.10081.001",
+# they are redoing all their sequencing
+# release doesn't go through end of 2019
+# will download provisional 
+microbial <- loadByProduct("DP1.10108.001", include.provisional = TRUE,
                       token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzI1NiJ9.eyJhdWQiOiJodHRwczovL2RhdGEubmVvbnNjaWVuY2Uub3JnL2FwaS92MC8iLCJzdWIiOiJhbmdlbGEubHVpc0B1bW9udGFuYS5lZHUiLCJzY29wZSI6InJhdGU6cHVibGljIiwiaXNzIjoiaHR0cHM6Ly9kYXRhLm5lb25zY2llbmNlLm9yZy8iLCJleHAiOjE4NzMwMzE4NjksImlhdCI6MTcxNTM1MTg2OSwiZW1haWwiOiJhbmdlbGEubHVpc0B1bW9udGFuYS5lZHUifQ.YLxLG3mCbxvV8RTI2amQFiOum--sxt5q5PgL4UIWaOnsILZTCu1kBRbAkoroYJEs5vNeDOI_6Tgk2913yV7NiA"
 )
 
