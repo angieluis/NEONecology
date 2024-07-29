@@ -373,7 +373,6 @@ microbe.ITS.metadata <- microbe.ITS.metadata %>%
            nlcdClass !="emergentHerbaceousWetlands" & nlcdClass !="woodyWetlands")
 
   
-  
 ### Still haven't filtered Time of year -------------------------#
 
 
@@ -486,6 +485,14 @@ soil.initial <- soil.initial %>%
 # "horizonTopDepth"     and     "horizonBottomDepth"
 # because they aren't going to be exactly the same
 
+# and not same plots either
+
+#584 plots with initial soil samples
+#343 plots with microbe ITS data
+summary(unique(microbe.ITS.metadata$plotID) %in% unique(soil.initial$plotID))
+# 208 of which are the same plots in the initial soil sample 
+
+# e.g., ABBY_070 has 8 microbial samples
 
 ###############################################################################
  
