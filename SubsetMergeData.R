@@ -192,15 +192,15 @@ soil_periodic$sls_soilpH
 soil.cores <- soil_periodic$sls_soilCoreCollection %>%
   mutate(collectDate = floor_date(collectDate, unit="days")) %>%
   filter(year(collectDate)>2018) %>%
-  select(c(3,4,6:16,19,20,23,25,29,32,34:37,41)) %>%
+  select(c(3,4,6:16,19,20,23,25,29,32,34:37,41, 45, 57:59)) %>%
   mutate_at(vars(siteID, plotID, plotType, nlcdClass, subplotID,
-                 horizon, boutType,sampleTiming), factor) 
+                 horizon, boutType,sampleTiming,biomassSampleCondition), factor) 
 
 soil.chem <-  soil_periodic$sls_soilChemistry %>%
   mutate(collectDate = floor_date(collectDate, unit="days")) %>%
   filter(year(collectDate)>2018) %>%
-  select(c(5:7,9:10,16:21)) %>%
-  mutate_at(vars(siteID, plotID, plotType, co2Trapped), factor)       
+  select(c(5:7,9:10,16:22,26)) %>%
+  mutate_at(vars(siteID, plotID, plotType, co2Trapped, cnIsotopeQF), factor)       
   
 ls <- unlist(lapply(as.list(soil.chem$sampleID), function(x){length(which(soil.chem$sampleID==x))}))
 summary(factor(ls))
@@ -211,13 +211,13 @@ summary(factor(ls))
 # I will take means before merging. 
 soil.chem.ave <- soil.chem %>%
   group_by(siteID, plotID, plotType, collectDate, sampleID) %>%
-  summarise(d15N = mean(d15N, na.rm=TRUE), 
+  summarise(d15N = mean(d15N[which(cnIsotopeQF=="OK")], na.rm=TRUE), # removes 44 samples where "sample d15N out of qaqc tolerance"
             organicd13C = mean(organicd13C, na.rm=TRUE),
             nitrogenPercent = mean(nitrogenPercent, na.rm = TRUE),
             organicCPercent = mean(organicCPercent, na.rm = TRUE),
             CNratio = mean(CNratio, na.rm = TRUE))
+            #cnIsotopeQF = str_flatten(cnIsotopeQF, collapse = " | "))
             
-  
 
 soil.mois <-  soil_periodic$sls_soilMoisture %>%
   mutate(collectDate = floor_date(collectDate, unit="days")) %>%
@@ -309,7 +309,11 @@ microbe.ITS <- as.tibble(distinct(microbial$mmg_soilMarkerGeneSequencing_ITS[,-1
          qaqcStatus == "Pass", # only keep those that pass qaqc (this removed 150 that failed)
          grepl("COMP", dnaSampleID)==F ) %>% # removed the one dnaSampleID with "COMP" 
   # in it because that means it was pooled and there were other IDs with that plot-date
-  select(c(2:4,42,8:10,24)-1)
+  select(c("siteID", "plotID", "geneticSampleID", "collectDate", "processedDate", "dnaSampleID",
+         "linkerPrimerSequence",	"reverseLinkerPrimerSequence", "illuminaIndex1",	
+         "illuminaIndex2", "sampleTotalReadNumber",	"sampleFilteredReadNumber",	
+         "minFilteredReadLength",	"maxFilteredReadLength", "qaqcStatus", "publicationDate",	"release"))
+# Ylva wanted FilteredReadLength, but they are all NA for our date range
 
 # check that my version of geneticSampleID looks ok
 l.gen <- unlist(lapply(as.list(microbe.ITS$geneticSampleID), 
@@ -405,8 +409,17 @@ soil.initial <- left_join(as.tibble(soil$spc_perhorizon) %>%
 soil.initial.biogeochem <-as.tibble(soil$spc_biogeochem) %>%
                             mutate(collectDate=floor_date(collectDate, unit="days")) %>% 
                             mutate_at(vars(domainID, siteID, plotID, horizonID, horizonName), factor) %>%
-                            select(c(3:5,7:9,13:15,31:39,43:45,49:50,54,58:73,79:83,87:92,
-                                     96:99,103,107,111,115,119))
+                            select(c("siteID",	"plotID","collectDate",	"horizonID",	"horizonName",
+                                     "biogeoTopDepth",	"biogeoBottomDepth",	"biogeoCenterDepth",
+                                     "gypsumConc",	"caco3MethodPub",	"caco3Method",	"caco3Conc",
+                                     "caNh4d",	"kNh4d",	"mgNh4d",	"naNh4d",	"cecdNh4",	"alSatCecd33",
+                                     "baseSumCecd10",	"bsesatCecd10", "alKcl",	"feKcl",	"mnKcl",
+                                     "phCacl2",	"phH2o", "carbonTot",	"nitrogenTot",	"ctonRatio",	
+                                     "estimatedOC",	"sulfurTot", "alOxalate",	"feOxalate",	"mnOxalate",
+                                     "pOxalate",	"siOxalate", "acidity", "MehlichIIITotP","Bray1PExtractable", 
+                                     "OlsenPExtractable"))
+                              
+
 dim(soil.initial.biogeochem)
 # [1] 3037   60
 length(unique(soil.initial.biogeochem$horizonID ))
@@ -421,7 +434,9 @@ soil.initial <- left_join(soil.initial, soil.initial.biogeochem)
 soil.initial.bulkdensity <-as.tibble(soil$spc_bulkdensity) %>%
                             mutate(collectDate=floor_date(collectDate, unit="days")) %>% 
                             mutate_at(vars(domainID, siteID, plotID, horizonID, horizonName), factor) %>%
-                            select(c(3:5,7:9,14:22))
+                            select(c("siteID", "plotID", "collectDate", "horizonID", "horizonName",
+                                     "bulkDensTopDepth",	"bulkDensBottomDepth","bulkDensCenterDepth",	
+                                     "bulkDensOvenDry",	"bulkDensFieldMoist"))
 dim(soil.initial.bulkdensity)
 length(unique(soil.initial.bulkdensity$horizonID))
 # a few horizonIDs repeated
@@ -433,8 +448,8 @@ as.data.frame(soil.initial.bulkdensity[which(ls>1),])
 # take the mean (but there's only 1 entry per variable type)
 
 soil.initial.bulkdensity <- soil.initial.bulkdensity %>%
-  group_by(domainID, siteID,   plotID, collectDate, horizonID, horizonName) %>%
-  summarise(across(2:9, \(x) mean(x, na.rm=TRUE), .names="{.col}"))
+  group_by(siteID,   plotID, collectDate, horizonID, horizonName) %>%
+  summarise(across(1:5, \(x) mean(x, na.rm=TRUE), .names="{.col}"))
 # returns NaN instead of NA for missing values now
 
 # merge
@@ -448,7 +463,9 @@ soil.initial <- left_join(soil.initial,soil.initial.bulkdensity)
 soil.initial.particlesize <- as.tibble(soil$spc_particlesize) %>%
                               mutate(collectDate=floor_date(collectDate, unit="days")) %>% 
                               mutate_at(vars(domainID, siteID, plotID, horizonID, horizonName), factor) %>%
-                              select(c(3:5,7:9,12:14,18:31))
+                              select(c("siteID",	"plotID", "collectDate",  "horizonID",	"horizonName",
+                                       "biogeoTopDepth",	"biogeoBottomDepth","biogeoCenterDepth",
+                                       "sandTotal",	"siltTotal",	"clayTotal"))
 
 dim(soil.initial.particlesize)
 length(unique(soil.initial.particlesize$horizonID))
@@ -515,13 +532,65 @@ for(i in 1:dim(microbe.ITS.metadata)[1]){
 }
 
 # if want total overlap - lots of 0s
+summary(soil.horizon.lineup$n.initial.horizons.total)
 # Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
 # 0.000   0.000   0.000   1.244   1.000  18.000 
 
 # if want any overlap:
+summary(soil.horizon.lineup$n.initial.horizons.any)
 # Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
 # 0.00   11.00   18.00   20.47   29.00   49.00 
 
+# For each periodic soil sample could probably average 
+# initial soil variables across the ones that overlap any
+
+
+
+
+# need to create a list of horizonIDs for each row of microbe.ITS.metadata
+
+soilhorizon.periodictoinitial <- list()
+for(i in 1:dim(microbe.ITS.metadata)[1]){
+  mt <- microbe.ITS.metadata$sampleTopDepth[i]
+  mb <- microbe.ITS.metadata$sampleBottomDepth[i]
+  
+  mt1 <- as.Date(mt*10, origin = "2020-01-01")
+  mb1 <- as.Date(mb*10, origin = "2020-01-01")
+  int.m <- interval(start = mt1, end = mb1 )
+  
+  # which soil.initial horizon IDs are there for that site-habitat combo?
+  sdat <- soil.initial %>%
+    filter(siteID == microbe.ITS.metadata$siteID[i],
+           nlcdClass == microbe.ITS.metadata$nlcdClass[i]) %>%
+    select(horizonID, horizonTopDepth, horizonBottomDepth)
+  
+  int.s <- interval(start = as.Date(sdat$horizonTopDepth*10, origin = "2020-01-01"),
+                    end = as.Date(sdat$horizonBottomDepth*10, origin = "2020-01-01"))
+  
+  
+  # int_overlaps(int.m, int.s) # which horizons overlap at all (any overlap not total overlap)
+
+  soilhorizon.periodictoinitial[[i]] <- sdat$horizonID[which(int_overlaps(int.m, int.s))]
+  
+
+}
+
+
+
+####### average initial soil variables for any horizon in that site-habitat
+# that overlaps with microbial sampling --------------------------------------#
+scols <- c(33,36:71)
+microbe.ITS.metadata.initial.soils <- data.frame(microbe.ITS.metadata[,c(1:4,36,37)], 
+                  soil.initial[dim(microbe.ITS.metadata)[1],scols])
+mcols <- 7:43
+for(r in 1:dim(dat)[1]){
+  hdat <- as.data.frame(soil.initial[match(soilhorizon.periodictoinitial[[r]], soil.initial$horizonID),])
+  for(c in 1:length(scols)){
+    microbe.ITS.metadata.initial.soils[r,mcols[c]] <- mean(hdat[,scols[c]], na.rm=T)
+  }
+}
+
+#<--------------------- need to do some quality control on this
 
 ###############################################################################
  
