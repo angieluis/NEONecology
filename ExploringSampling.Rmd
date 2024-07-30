@@ -107,7 +107,7 @@ ggplot() +
 
 ## Summary of Sampling by Site-Habitat
 
-Here is a summary of sampling of each site-habitat combo across datasets for plant cover, productivity, periodic and initial soils, ITS sequences. This is using the 'reduced.plant.cover' after removing a few - see below. 'n.cover.plots' is the number of unique plots sampled for plant cover (can be over 1 or multiple years and can have different number of subplots, etc). 'n.prod.plots' is the number of unique plots sampled for productivity (can be over 1 or multiple years and include multiple samples per season within and across subplots). "n.pchem", "n.pmois", and "n.ppH" are number of periodic soil samples (by 'sampleID') analyzed for the different soil attributes (chemistriy, moisture, pH). "n.ITSseq" is number of soil samples sequenced for microbes for ITS. "iOlsenP", "iMehlP", "ichNh4d", and "itext" are number of plots sampled during the initial soil characterization (done once) for Olsen P, Mehlich P, chNh4d, and texture. 
+Here is a summary of sampling of each site-habitat combo across datasets for plant cover, productivity, periodic and initial soils, ITS sequences. This is using the 'reduced.plant.cover' after removing a few - see below. 'n.cover.plots' is the number of unique plots sampled for plant cover (can be over 1 or multiple years and can have different number of subplots, etc). 'n.prod.plots' is the number of unique plots sampled for productivity (can be over 1 or multiple years and include multiple samples per season within and across subplots). "n.pchem", "n.pmois", and "n.ppH" are number of periodic soil samples (by 'sampleID') analyzed for the different soil attributes (chemistriy, moisture, pH). (Specifically, pchem here was CNratio - needed both data on C and N, and if only want one, or other chemistry, there may be more samples.) "n.ITSseq" is number of soil samples sequenced for microbes for ITS and passed qaqc. "iOlsenP", "iMehlP", "ichNh4d", and "itext" are number of plots sampled during the initial soil characterization (done once) for Olsen P, Mehlich P, chNh4d, and texture. 
 
 ```{r table, echo=FALSE, warning=FALSE, message=FALSE,  out.width='150%'}
 
@@ -439,5 +439,27 @@ No. There is only 1 bout per plot per year now.
 **The unit I am calculating is species richness per plot per year. So total number of unique species identified at any of the subplots within a plot per year.**
 
 We can do rarefaction per site/habitat or something else to get a measure to use.
+
+
+<br/>
+<br/>
+
+## Periodic Soil Characteristics & Microbe Sequencing 
+
+### 
+
+The Soil Chemistry dataframe sometimes had multiple rows per sampleID. E.g., there were sometimes 2 different testMethods to get C vs N, each with its own row. So there are NAs for nitrogen but a value of carbon or vice versa on different rows. Sometimes 2 different values for the same variable. For  d15N, organicd13C, nitrogenPercent, organicCPercent, and CNratio, I took the average (removing NAs) so that there was one value per sampleID to match up with the rest of the data. I merged the data into one dataframe called soil.periodic.merge with one row per sampleID, with information on plot, date, sampleTiming, horizon, depth, chemistry, moisture, pH, and whether it was sequenced for ITS and passed qaqc.
+
+
+<br/>
+<br/>
+
+## Initial Soil Characterization
+
+Happened once. 
+Here horizonID is unique identifier that I merged datasets with. Each plot has one pit with multiple horizons. I merged info on plots and horizons with biogeochem, bulk density, and particle size. The bulk density sometimes had more than 1 test run (clod vs compliant cavity) on the same sample (horizonID), so I again took the average per horizonID (removing NAs).
+
+I tried to align horizons between the soil periodic sampling (and microbe sampling) and initial soil characterizations. The plots aren't always present in both datasets so used any plots in the same site-habitat from the initial soils. More than half of the microbe sample top and bottom depths were not fully within an initial soil horizon. But if just looking for any overlap in the 2 horizons, then only 45 out of 6085 that didn't line up at all (could choose the closest?).
+
 
 
