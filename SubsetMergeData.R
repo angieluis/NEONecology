@@ -191,13 +191,7 @@ soil_periodic$sls_soilpH
 
 soil.cores <- soil_periodic$sls_soilCoreCollection %>%
   mutate(collectDate = floor_date(collectDate, unit="days")) %>%
-  filter(
-  #        nlcdClass != "cultivatedCrops" & nlcdClass !="pastureHay" & 
-  #        nlcdClass !="emergentHerbaceousWetlands" & nlcdClass !="woodyWetlands",
-       year(collectDate)>2018) %>%
-       # month(collectDate)==6 | month(collectDate)==7 | month(collectDate)==8 )  
-       ### not subsetting by month because there were a lot more that sampled 
-        ## outside this range - a lot in October - can do it later if want to
+  filter(year(collectDate)>2018) %>%
   select(c(3,4,6:16,19,20,23,25,29,32,34:37,41)) %>%
   mutate_at(vars(siteID, plotID, plotType, nlcdClass, subplotID,
                  horizon, boutType,sampleTiming), factor) 
@@ -205,8 +199,6 @@ soil.cores <- soil_periodic$sls_soilCoreCollection %>%
 soil.chem <-  soil_periodic$sls_soilChemistry %>%
   mutate(collectDate = floor_date(collectDate, unit="days")) %>%
   filter(year(collectDate)>2018) %>%
-  # month(collectDate)==6 | month(collectDate)==7 | month(collectDate)==8 )  
-  ### not subsetting yet
   select(c(5:7,9:10,16:21)) %>%
   mutate_at(vars(siteID, plotID, plotType, co2Trapped), factor)       
   
@@ -230,8 +222,6 @@ soil.chem.ave <- soil.chem %>%
 soil.mois <-  soil_periodic$sls_soilMoisture %>%
   mutate(collectDate = floor_date(collectDate, unit="days")) %>%
   filter(year(collectDate)>2018) %>%
-  # month(collectDate)==6 | month(collectDate)==7 | month(collectDate)==8 )  
-  ### not subsetting yet
   select(c(3,4,7,8,12,15:19)) %>%
   mutate_at(vars(siteID, plotID, horizon), factor)       
 ls <- unlist(lapply(as.list(soil.mois$sampleID), function(x){length(which(soil.mois$sampleID==x))}))
@@ -242,8 +232,6 @@ summary(factor(ls))
 soil.pH <-  soil_periodic$sls_soilpH %>%
   mutate(collectDate = floor_date(collectDate, unit="days")) %>%
   filter(year(collectDate)>2018) %>%
-  # month(collectDate)==6 | month(collectDate)==7 | month(collectDate)==8 )  
-  ### not subsetting yet
   select(c(3,4,7,9,13:21)) %>%
   mutate_at(vars(siteID, plotID, horizon), factor)       
 ls <- unlist(lapply(as.list(soil.pH$sampleID), function(x){length(which(soil.pH$sampleID==x))}))
@@ -318,32 +306,30 @@ microbe.ITS <- as.tibble(distinct(microbial$mmg_soilMarkerGeneSequencing_ITS[,-1
                                                    "-GEN", sep ="")}))) %>%    #str_sub(dnaSampleID, 1, -6)) %>% 
   mutate_at(vars(domainID, siteID, plotID, qaqcStatus), factor) %>%
   filter(year(collectDate)>2018,
-         grepl("COMP", dnaSampleID)==F) %>% # removed the one dnaSampleID with "COMP" in it because that means it was pooled and there were other IDs with that plot-date
+         qaqcStatus == "Pass", # only keep those that pass qaqc (this removed 150 that failed)
+         grepl("COMP", dnaSampleID)==F ) %>% # removed the one dnaSampleID with "COMP" 
+  # in it because that means it was pooled and there were other IDs with that plot-date
   select(c(2:4,42,8:10,24)-1)
 
 # check that my version of geneticSampleID looks ok
 l.gen <- unlist(lapply(as.list(microbe.ITS$geneticSampleID), 
                        function(x){length(str_split_1(x,pattern="-"))}))
 summary(factor(l.gen))
-# 5    6 
-# 1572 5213 
+#    5    6 
+# 1560 5075  
 # string of length both 5 and 6 are normal
 
 ls <- unlist(lapply(as.list(microbe.ITS$geneticSampleID), function(x){length(which(microbe.ITS$geneticSampleID==x))}))
 summary(factor(ls))
 # 1 
-# 6785 
+# 6635 
 # only 1 row per geneticSampleID - that's good.
 
-summary(microbe.ITS$qaqcStatus)
-# Fail Not recorded         Pass 
-#  150            0         6635 
-# may want to only use the Pass ones? Worry about later
-  
+
 gs <- soil.periodic.merge$geneticSampleID[which(!is.na(soil.periodic.merge$geneticSampleID))]
 summary(microbe.ITS$geneticSampleID %in% gs)
 #    Mode    TRUE 
-# logical    6785 
+# logical    6635 
 # all the microbial samples are in the soil.periodic.merge data - yay
 
 
@@ -391,7 +377,6 @@ soil.plots <- soil$spc_perplot %>%
 
 # I won't cut these down at all by date
 
-# need to figure out how to match up the plotID/horizon to microbial data
 
 ########### Merge datasets
 # "spc_biogeochem"              "spc_bulkdensity"            
@@ -445,7 +430,7 @@ ls <- unlist(lapply(as.list(soil.initial.bulkdensity$horizonID),
 summary(factor(ls))
 as.data.frame(soil.initial.bulkdensity[which(ls>1),])
 # 3 are repeated because diff analyses with diff SampleType: clod vs compliant cavity
-# take the mean (but it's there's only 1 entry per variable type)
+# take the mean (but there's only 1 entry per variable type)
 
 soil.initial.bulkdensity <- soil.initial.bulkdensity %>%
   group_by(domainID, siteID,   plotID, collectDate, horizonID, horizonName) %>%
@@ -493,6 +478,50 @@ summary(unique(microbe.ITS.metadata$plotID) %in% unique(soil.initial$plotID))
 # 208 of which are the same plots in the initial soil sample 
 
 # e.g., ABBY_070 has 8 microbial samples
+
+
+summary(microbe.ITS.metadata[,c("plotID","collectDate","qaqcStatus","sampleTiming","sampleID","horizon","litterDepth","sampleTopDepth","sampleBottomDepth")])
+
+soil.horizon.lineup <- data.frame(siteID = microbe.ITS.metadata$siteID,
+                                  nlcdClass = microbe.ITS.metadata$nlcdClass,
+                                  microbe.sampleID = microbe.ITS.metadata$sampleID, 
+                                  microbe.horizon = microbe.ITS.metadata$horizon,
+                                  n.initial.horizons.any = rep(NA, dim(microbe.ITS.metadata)[1]),
+                                  n.initial.horizons.total = rep(NA, dim(microbe.ITS.metadata)[1]))
+for(i in 1:dim(microbe.ITS.metadata)[1]){
+  mt <- microbe.ITS.metadata$sampleTopDepth[i]
+  mb <- microbe.ITS.metadata$sampleBottomDepth[i]
+  
+  mt1 <- as.Date(mt*10, origin = "2020-01-01")
+  mb1 <- as.Date(mb*10, origin = "2020-01-01")
+  int.m <- interval(start = mt1, end = mb1 )
+  
+  # which soil.initial horizon IDs are there for that site-habitat combo?
+  sdat <- soil.initial %>%
+    filter(siteID == microbe.ITS.metadata$siteID[i],
+           nlcdClass == microbe.ITS.metadata$nlcdClass[i]) %>%
+    select(horizonID, horizonTopDepth, horizonBottomDepth)
+  
+  int.s <- interval(start = as.Date(sdat$horizonTopDepth*10, origin = "2020-01-01"),
+                    end = as.Date(sdat$horizonBottomDepth*10, origin = "2020-01-01"))
+  
+  
+  # int_overlaps(int.m, int.s) # any overlap
+  # int.m %within% int.s # total overlap 
+  hor.any <- sdat$horizonID[which(int_overlaps(int.m, int.s))]
+  soil.horizon.lineup$n.initial.horizons.any[i] <- length(hor.any)
+  hor.total <- sdat$horizonID[which(int.m %within% int.s)]
+  soil.horizon.lineup$n.initial.horizons.total[i] <- length(hor.total)
+}
+
+# if want total overlap - lots of 0s
+# Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+# 0.000   0.000   0.000   1.244   1.000  18.000 
+
+# if want any overlap:
+# Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+# 0.00   11.00   18.00   20.47   29.00   49.00 
+
 
 ###############################################################################
  
