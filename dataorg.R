@@ -305,6 +305,15 @@ hanta <- loadByProduct("DP1.10064.001",
                        token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzI1NiJ9.eyJhdWQiOiJodHRwczovL2RhdGEubmVvbnNjaWVuY2Uub3JnL2FwaS92MC8iLCJzdWIiOiJhbmdlbGEubHVpc0B1bW9udGFuYS5lZHUiLCJzY29wZSI6InJhdGU6cHVibGljIiwiaXNzIjoiaHR0cHM6Ly9kYXRhLm5lb25zY2llbmNlLm9yZy8iLCJleHAiOjE4NzMwMzE4NjksImlhdCI6MTcxNTM1MTg2OSwiZW1haWwiOiJhbmdlbGEubHVpc0B1bW9udGFuYS5lZHUifQ.YLxLG3mCbxvV8RTI2amQFiOum--sxt5q5PgL4UIWaOnsILZTCu1kBRbAkoroYJEs5vNeDOI_6Tgk2913yV7NiA"
 )
 
+names(hanta)
+
+head(hanta$rpt_bloodtesting)
+hanta.bloodtesting <- as.tibble(hanta$rpt_bloodtesting) %>%
+  mutate(collectDate = floor_date(collectDate, unit="days")) %>%
+  mutate_at(vars(siteID, plotID, sampleCondition, testPathogenName, testResult), factor)
+
+
+
 ##############################################################################
 ## Productivity
 ## Raw data downloaded using neonUtilities
@@ -533,8 +542,8 @@ microbial <- loadByProduct("DP1.10108.001", include.provisional = TRUE,
 ###############################################################################
 
 save(plantsDD, beetlesDD, birdsDD, smammalsDD, prod, soil, 
-     soil_periodic, microbial
-     , file="BasicNEONdata.RData")
+     soil_periodic, microbial, hanta.bloodtesting,
+     file="BasicNEONdata.RData")
 
 
 
