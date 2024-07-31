@@ -107,7 +107,7 @@ ggplot() +
 
 ## Summary of Sampling by Site-Habitat
 
-Here is a summary of sampling of each site-habitat combo across datasets for plant cover, productivity, periodic and initial soils, ITS sequences. This is using the 'reduced.plant.cover' after removing a few - see below. 'n.cover.plots' is the number of unique plots sampled for plant cover (can be over 1 or multiple years and can have different number of subplots, etc). 'n.prod.plots' is the number of unique plots sampled for productivity (can be over 1 or multiple years and include multiple samples per season within and across subplots). "n.pchem", "n.pmois", and "n.ppH" are number of periodic soil samples (by 'sampleID') analyzed for the different soil attributes (chemistriy, moisture, pH). (Specifically, pchem here was CNratio - needed both data on C and N, and if only want one, or other chemistry, there may be more samples.) "n.ITSseq" is number of soil samples sequenced for microbes for ITS and passed qaqc. "iOlsenP", "iMehlP", "ichNh4d", and "itext" are number of plots sampled during the initial soil characterization (done once) for Olsen P, Mehlich P, chNh4d, and texture. 
+Here is a summary of sampling of each site-habitat combo across datasets for plant cover, productivity, periodic and initial soils, ITS sequences. This is using the 'reduced.plant.cover' after removing a few - see below. 'n.cover.plots' is the number of unique plots sampled for plant cover (can be over 1 or multiple years and can have different number of subplots, etc). 'n.prod.plots' is the number of unique plots sampled for productivity (can be over 1 or multiple years and include multiple samples per season within and across subplots). "n.pchem", "n.pmois", and "n.ppH" are number of periodic soil samples (by 'sampleID') analyzed for the different soil attributes (chemistriy, moisture, pH). (Specifically, pchem here was CNratio - needed both data on C and N, and if only want one, or other chemistry, there may be more samples.) "n.ITSseq" is number of soil samples sequenced for microbes for ITS and passed qaqc. "iOlsenP", "iMehlP", and "itext" are number of plots sampled during the initial soil characterization (done once) for Olsen P, Mehlich P, and texture. 
 
 ```{r table, echo=FALSE, warning=FALSE, message=FALSE,  out.width='150%'}
 
@@ -118,7 +118,7 @@ psss.col <- dtc$color[match(plant.soil.sitehab.samples$siteID,dtc$siteID)]
 
 #plant.soil.sitehab.samples <- plant.soil.sitehab.samples[order(c(plant.soil.sitehab.samples$siteID, plant.soil.sitehab.samples$nlcdClass)),]
 
-plant.soil.sitehab.samples %>%
+plant.soil.sitehab.samples[,-12] %>% # don't need caNh4d - repeats of others
   kable() %>%
   kable_styling(bootstrap_options = c("striped", "hover"), fixed_thead = T, full_width = F) %>%
   kable_styling(font_size=13, position = "left", full_width = FALSE) %>%
@@ -139,9 +139,9 @@ plant.soil.sitehab.samples %>%
               bold = ifelse(plant.soil.sitehab.samples$n.iOlsenP==0, TRUE, FALSE)) %>%
   column_spec(11, color = ifelse(plant.soil.sitehab.samples$n.iMehlP==0, "firebrick2", "black"),
               bold = ifelse(plant.soil.sitehab.samples$n.iMehlP==0, TRUE, FALSE)) %>%
-  column_spec(12, color = ifelse(plant.soil.sitehab.samples$n.icaNh4d==0, "firebrick2", "black"),
-              bold = ifelse(plant.soil.sitehab.samples$n.icaNh4d==0, TRUE, FALSE)) %>%
-  column_spec(13, color = ifelse(plant.soil.sitehab.samples$n.itext==0, "firebrick2", "black"),
+  # column_spec(12, color = ifelse(plant.soil.sitehab.samples$n.icaNh4d==0, "firebrick2", "black"),
+  #             bold = ifelse(plant.soil.sitehab.samples$n.icaNh4d==0, TRUE, FALSE)) %>%
+  column_spec(12, color = ifelse(plant.soil.sitehab.samples$n.itext==0, "firebrick2", "black"),
               bold = ifelse(plant.soil.sitehab.samples$n.itext==0, TRUE, FALSE)) 
 
     
@@ -436,9 +436,8 @@ No. There is only 1 bout per plot per year now.
 <br/>
 
 
-**The unit I am calculating is species richness per plot per year. So total number of unique species identified at any of the subplots within a plot per year.**
+**The unit I will work with is species richness per plot per year. So total number of unique species identified at any of the subplots within a plot per year. But Jed is thinking about rarefaction.**
 
-We can do rarefaction per site/habitat or something else to get a measure to use.
 
 
 <br/>
@@ -456,10 +455,25 @@ The Soil Chemistry dataframe sometimes had multiple rows per sampleID. E.g., the
 
 ## Initial Soil Characterization
 
-Happened once. 
+Initial Soil Characterization happened once per plot, but often more than 1 plot per site-habitat. These data include some chemsitry (C, N, oxalate, P), density, and texture (sand, silt, clay) --  initially in separate datasets.
+
+```{r si, echo=FALSE, warning=FALSE, message=FALSE, out.width="50%"}
+
+si.dat <- soil.initial %>%
+  group_by(siteID, nlcdClass) %>%
+  summarise(n.plots = length(unique(plotID)))
+hist(si.dat$n.plots, breaks = 18, xlab="number of plots", 
+     main="Number of plots with initial soil characterization 
+     per site-habitat")
+```
+
 Here horizonID is unique identifier that I merged datasets with. Each plot has one pit with multiple horizons. I merged info on plots and horizons with biogeochem, bulk density, and particle size. The bulk density sometimes had more than 1 test run (clod vs compliant cavity) on the same sample (horizonID), so I again took the average per horizonID (removing NAs).
 
-I tried to align horizons between the soil periodic sampling (and microbe sampling) and initial soil characterizations. The plots aren't always present in both datasets so used any plots in the same site-habitat from the initial soils. More than half of the microbe sample top and bottom depths were not fully within an initial soil horizon. But if just looking for any overlap in the 2 horizons, then only 45 out of 6085 that didn't line up at all (could choose the closest?).
+I tried to align horizons between the soil periodic sampling (and microbe sampling) and initial soil characterizations. The plots aren't always present in both datasets so I used any plots in the same site-habitat from the initial soils. More than half of the microbe sample top and bottom depths were not fully within an initial soil horizon. But if just looking for any overlap in the 2 horizons, then only 45 out of 6085 that didn't line up at all. So for each microbe ITS sample (row in the microbe.ITS.metadata), I averaged all initial soil chemistry, density, and texture data for plot-horizons that had any overlap with the microbe sample's top and bottom depths. [May want to do it 2 batches - if fully within a horizon first, and then any overlap 2nd]
+
+
+<br/>
+<br/>
 
 
 
