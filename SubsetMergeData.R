@@ -540,7 +540,7 @@ summary(soil.horizon.lineup$n.initial.horizons.total)
 summary(soil.horizon.lineup$n.initial.horizons.any)
 # Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
 # 0.00   11.00   18.00   20.47   29.00   49.00 
-
+# 45 out of 6085 don't overlap at all.
 # For each periodic soil sample could probably average 
 # initial soil variables across the ones that overlap any
 
@@ -569,9 +569,7 @@ for(i in 1:dim(microbe.ITS.metadata)[1]){
   
   
   # int_overlaps(int.m, int.s) # which horizons overlap at all (any overlap not total overlap)
-
   soilhorizon.periodictoinitial[[i]] <- sdat$horizonID[which(int_overlaps(int.m, int.s))]
-  
 
 }
 
@@ -579,18 +577,18 @@ for(i in 1:dim(microbe.ITS.metadata)[1]){
 
 ####### average initial soil variables for any horizon in that site-habitat
 # that overlaps with microbial sampling --------------------------------------#
-scols <- c(33,36:71)
-microbe.ITS.metadata.initial.soils <- data.frame(microbe.ITS.metadata[,c(1:4,36,37)], 
-                  soil.initial[dim(microbe.ITS.metadata)[1],scols])
-mcols <- 7:43
+scols <- c(33,36:71) # columns in the soil.initial data to average
+microbe.ITS.metadata.initial.soils <- data.frame(microbe.ITS.metadata[,c(1:4,36,37)], # columns in microbe.ITS.metadata to match by (top and bottom depth)
+                  soil.initial[dim(microbe.ITS.metadata)[1],scols]) # add the column names and NA
+mcols <- 7:43 # which columns to put the new averages in
 for(r in 1:dim(dat)[1]){
   hdat <- as.data.frame(soil.initial[match(soilhorizon.periodictoinitial[[r]], soil.initial$horizonID),])
   for(c in 1:length(scols)){
     microbe.ITS.metadata.initial.soils[r,mcols[c]] <- mean(hdat[,scols[c]], na.rm=T)
   }
 }
+summary(microbe.ITS.metadata.initial.soils)
 
-#<--------------------- need to do some quality control on this
 
 ###############################################################################
  
