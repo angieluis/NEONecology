@@ -292,6 +292,18 @@ ggplot(dat, aes(x = group, y = total_sp_richness, col=group)) +
   ggtitle("Distributions of total species richness across sites")  
 
 
+##############################################################################
+## Rodent Pathogen Status, hantavirus 
+##############################################################################
+
+# hantavirus data only goes through 2019 or 2020. then they switched to 
+# tick borne diseases
+# if want to match up will need to make sure that things didn't differ a lot
+# over time at these sites
+
+hanta <- loadByProduct("DP1.10064.001", 
+                       token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzI1NiJ9.eyJhdWQiOiJodHRwczovL2RhdGEubmVvbnNjaWVuY2Uub3JnL2FwaS92MC8iLCJzdWIiOiJhbmdlbGEubHVpc0B1bW9udGFuYS5lZHUiLCJzY29wZSI6InJhdGU6cHVibGljIiwiaXNzIjoiaHR0cHM6Ly9kYXRhLm5lb25zY2llbmNlLm9yZy8iLCJleHAiOjE4NzMwMzE4NjksImlhdCI6MTcxNTM1MTg2OSwiZW1haWwiOiJhbmdlbGEubHVpc0B1bW9udGFuYS5lZHUifQ.YLxLG3mCbxvV8RTI2amQFiOum--sxt5q5PgL4UIWaOnsILZTCu1kBRbAkoroYJEs5vNeDOI_6Tgk2913yV7NiA"
+)
 
 ##############################################################################
 ## Productivity
@@ -666,14 +678,16 @@ temp <- loadByProduct("DP1.00003.001", startdate = "2019-01", enddate = "2022-12
 ##############################################################################
 # Daymet Data
 ##############################################################################
+# initially did this by site, but this is by plot 
 
 library(daymetr)
-daymet.info <- sitesummary[,c(1,3,4)]
+
+daymet.info.plot <- plotsummary[,c(1,3,4)]
 
 
 # https://daymet.ornl.gov/overview 
-write.csv(daymet.info,file="NEONdaymetinfo.csv",row.names = FALSE)
-df_batch <- download_daymet_batch(file_location = "NEONdaymetinfo.csv", 
+write.csv(daymet.info.plot,file="NEONdaymetPlotinfo.csv",row.names = FALSE)
+df_batch <- download_daymet_batch(file_location = "NEONdaymetPlotinfo.csv", 
                                   start = 2013, end = 2021, simplify = TRUE)
 head(df_batch)
 
@@ -682,16 +696,17 @@ unique(df_batch$measurement)
 df_batch$date <- as.Date(df_batch$yday-1, origin=paste(df_batch$year,"01-01",sep="-"))
 df_batch$month <- month(df_batch$date)
 
+names(df_batch)[1] <- "plotID"
 
-daymetsummaries.long <- df_batch %>%
-  group_by(site,measurement) %>%
+daymetPlotsummaries.long <- df_batch %>%
+  group_by(plotID,measurement) %>%
   summarise(mean = mean(value))
 
-daymetmeans <- pivot_wider(daymetsummaries.long, 
-            names_from = measurement,
-            values_from = mean)
+daymetPlotmeans <- pivot_wider(daymetPlotsummaries.long, 
+                               names_from = measurement,
+                               values_from = mean)
 
-write.csv(daymetmeans, file="DaymetEnvDataMeans.csv", row.names = F)
+write.csv(daymetPlotmeans, file="DaymetPlotEnvDataMeans.csv", row.names = F)
 
 # Day length	dayl	s/day	Duration of the daylight period in seconds per day. 
 # This calculation is based on the period of the day during which the sun is above 
@@ -708,7 +723,7 @@ write.csv(daymetmeans, file="DaymetEnvDataMeans.csv", row.names = F)
 # Minimum air temperature	tmin	degrees C	Daily minimum 2-meter air temperature in degrees Celsius.
 # Water vapor pressure	vp	Pa	Water vapor pressure in pascals. Daily average partial pressure of water vapor.
 
-save(daymetsummaries.long, daymetmeans, file="DaymetMeans.RData")
+save(daymetPlotsummaries.long, daymetPlotmeans, file="DaymetPlotMeans.RData")
 
 
 
