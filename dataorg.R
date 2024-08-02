@@ -313,6 +313,26 @@ hanta.bloodtesting <- as.tibble(hanta$rpt_bloodtesting) %>%
   mutate_at(vars(siteID, plotID, sampleCondition, testPathogenName, testResult), factor)
 
 
+##############################################################################
+## Raw data on Smammal trapping - each capture, etc 
+##############################################################################
+
+# I had already downloaded and cleaned and saved the captures
+# see  "~/Documents/NEON data/NEON_count-small-mammals/NEONsmammals/NEONdataorg.R"
+# called captures in "/Documents/NEON data/NEON_count-small-mammals/NEONsmammals/NEONsmammalcaptures.RData"
+# Downloaded it last year, so it only goes through 2021
+# that's past when they stopped hanta testing, but doens't match up to rest of diversity data
+
+smammal.capturedata <- loadByProduct("DP1.10072.001", 
+                       token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzI1NiJ9.eyJhdWQiOiJodHRwczovL2RhdGEubmVvbnNjaWVuY2Uub3JnL2FwaS92MC8iLCJzdWIiOiJhbmdlbGEubHVpc0B1bW9udGFuYS5lZHUiLCJzY29wZSI6InJhdGU6cHVibGljIiwiaXNzIjoiaHR0cHM6Ly9kYXRhLm5lb25zY2llbmNlLm9yZy8iLCJleHAiOjE4NzMwMzE4NjksImlhdCI6MTcxNTM1MTg2OSwiZW1haWwiOiJhbmdlbGEubHVpc0B1bW9udGFuYS5lZHUifQ.YLxLG3mCbxvV8RTI2amQFiOum--sxt5q5PgL4UIWaOnsILZTCu1kBRbAkoroYJEs5vNeDOI_6Tgk2913yV7NiA"
+)
+
+names(smammal.capturedata)
+
+save(smammal.capturedata, file="rawSmammalCaptureData.RData")
+
+#see "CleanOrganizeSmammalCaptureData.R" for cleaning and organization to estimate abundances
+
 
 ##############################################################################
 ## Productivity
@@ -536,6 +556,41 @@ microbial <- loadByProduct("DP1.10108.001", include.provisional = TRUE,
 )
 
 
+
+
+##############################################################################
+# Soil microbe biomass
+##############################################################################
+
+microbial.biomass.raw <- loadByProduct("DP1.10104.001", 
+                           token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzI1NiJ9.eyJhdWQiOiJodHRwczovL2RhdGEubmVvbnNjaWVuY2Uub3JnL2FwaS92MC8iLCJzdWIiOiJhbmdlbGEubHVpc0B1bW9udGFuYS5lZHUiLCJzY29wZSI6InJhdGU6cHVibGljIiwiaXNzIjoiaHR0cHM6Ly9kYXRhLm5lb25zY2llbmNlLm9yZy8iLCJleHAiOjE4NzMwMzE4NjksImlhdCI6MTcxNTM1MTg2OSwiZW1haWwiOiJhbmdlbGEubHVpc0B1bW9udGFuYS5lZHUifQ.YLxLG3mCbxvV8RTI2amQFiOum--sxt5q5PgL4UIWaOnsILZTCu1kBRbAkoroYJEs5vNeDOI_6Tgk2913yV7NiA"
+)
+
+names(microbial.biomass.raw)
+# scaled and not scaled dataframes. not sure what we want
+
+# are they the same samples? some.
+summary(microbial.biomass.raw$sme_microbialBiomass$sampleID %in% 
+          microbial.biomass.raw$sme_scaledMicrobialBiomass$sampleID)
+#    Mode   FALSE    TRUE 
+# logical    1135    4748 
+summary(microbial.biomass.raw$sme_scaledMicrobialBiomass$sampleID %in%
+          microbial.biomass.raw$sme_microbialBiomass$sampleID)
+#    Mode   FALSE    TRUE 
+# logical    2326    4741 
+
+save(microbial.biomass.raw, file="MicrobialBiomassRaw.RData")
+
+###############################################################################
+## Root biomass and chemistry, Megapit
+###############################################################################
+
+# not run yet:
+root.biomass.raw <- loadByProduct("DP1.10066.001", 
+                                       token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzI1NiJ9.eyJhdWQiOiJodHRwczovL2RhdGEubmVvbnNjaWVuY2Uub3JnL2FwaS92MC8iLCJzdWIiOiJhbmdlbGEubHVpc0B1bW9udGFuYS5lZHUiLCJzY29wZSI6InJhdGU6cHVibGljIiwiaXNzIjoiaHR0cHM6Ly9kYXRhLm5lb25zY2llbmNlLm9yZy8iLCJleHAiOjE4NzMwMzE4NjksImlhdCI6MTcxNTM1MTg2OSwiZW1haWwiOiJhbmdlbGEubHVpc0B1bW9udGFuYS5lZHUifQ.YLxLG3mCbxvV8RTI2amQFiOum--sxt5q5PgL4UIWaOnsILZTCu1kBRbAkoroYJEs5vNeDOI_6Tgk2913yV7NiA"
+)
+
+save(root.biomass.raw, file="RootBiomassRaw.Rdata")
 
 ###############################################################################
 # Save basic data for further Analyses
