@@ -13,60 +13,11 @@ NEONsmammalcaptures <- as_tibble(smammal.capturedata$mam_pertrapnight)
 names(NEONsmammalcaptures)
 head(NEONsmammalcaptures) 
 
-## Dates & trapping schedule & trap-nights ----------------------------------##
+trapping.info <-  trap.status.function(captures = NEONsmammalcaptures)
+# traps_available include all traps that were set (even if disturbed, sign, etc)
 
-site.names <- sort(unique(NEONsmammalcaptures$siteID))
-smammal.sitedates <- list()
-trapStatuslist <- list()
-for(i in 1:length(site.names)){
-  dat <- NEONsmammalcaptures[which(NEONsmammalcaptures$siteID==site.names[i]),]
-  plots <- sort(unique(dat$plotID))
-  plotdates <- list()
-  trapstat <- list()
-  for(p in 1:length(plots)){
-    inds <- which(dat$plotID==plots[p])
-    dates <- dat$collectDate[inds]
-    plotdates[[p]] <- sort(unique(dates))
-    trapstat[[p]] <- data.frame(date=plotdates[[p]],trap_not_set=rep(NA,length(plotdates[[p]])),
-                                trap_disturbed=rep(NA,length(plotdates[[p]])), 
-                                trap_open_but_sign=rep(NA,length(plotdates[[p]])),
-                                multiple_caps=rep(NA,length(plotdates[[p]])),
-                                capture=rep(NA,length(plotdates[[p]])),
-                                set_and_empty=rep(NA,length(plotdates[[p]])),
-                                traps_available=rep(NA,length(plotdates[[p]]))) 
-    
-    # I counted traps available as total number minus those that weren't set (still counted disturbed/closed as available) 
-    # so trap nights per session will be the sum of this over the session
-    
-    datx <- dat[inds,]  
-    for(d in 1:length(plotdates[[p]])){
-      datxd <- datx[which(dates==plotdates[[p]][d]),]
-      trapstat[[p]]$trap_not_set[d] <-  length(which(datxd$trapStatus=="1 - trap not set"))
-      trapstat[[p]]$trap_disturbed[d] <-  length(which(datxd$trapStatus=="2 - trap disturbed/door closed but empty"))
-      trapstat[[p]]$trap_open_but_sign[d] <-  length(which(datxd$trapStatus=="3 - trap door open or closed w/ spoor left"))
-      trapstat[[p]]$multiple_caps[d] <-  length(which(datxd$trapStatus=="4 - more than 1 capture in one trap"))
-      trapstat[[p]]$capture[d] <-  length(which(datxd$trapStatus=="5 - capture"))
-      trapstat[[p]]$set_and_empty[d] <-  length(which(datxd$trapStatus=="6 - trap set and empty"))
-      trapstat[[p]]$traps_available[d] <-  sum(trapstat[[p]][d, 3:7]) 
-      
-    }
-    ## sometimes no traps were set the whole day or even session. I don't see the point of keeping that in the dataset.
-    ## Remove those dates
-    rmind <- which(trapstat[[p]]$traps_available==0)
-    if(length(rmind)>0){
-      trapstat[[p]] <- trapstat[[p]][-rmind,]
-      plotdates[[p]] <- plotdates[[p]][-rmind]
-    }
-  }
-  names(plotdates) <- plots
-  names(trapstat) <- plots
-  smammal.sitedates[[i]] <- plotdates
-  trapStatuslist[[i]] <- trapstat
-}
-names(smammal.sitedates) <- site.names
-names(trapStatuslist) <- site.names
-
-
+hist(trapping.info$traps_available, breaks=20) 
+hist(trapping.info$traps_available[which(trapping.info$traps_available<40)], breaks=20)
 
 
 
@@ -90,7 +41,8 @@ summary(smammal.captures)
 
 length(which(!is.na(smammal.captures$bloodSampleID)))
 # 37231 out of 146858 captures had blood sample IDs
-# eventually put those data in here (SNV through 2019 and after that tick borne pathogens)
+# many were tested for pathogen (SNV through 2019 and after that tick borne pathogens)
+# eventually I want to merge those data
 
 smammal.species.info <- smammal.captures %>%
   group_by(scientificName, taxonRank, taxonID) %>%
@@ -107,7 +59,7 @@ write_csv(smammal.species.info, file="NEONsmammalSpecies.csv")
 
 
 
-## Plot Summaries including trapnights ------------------------------------- ##
+## Summaries of Plots including trapnights --------------------------------- ##
 
 smammal.plot.data <- NEONsmammalcaptures %>%
   group_by(siteID, plotID, plotType, nlcdClass) %>% # there area few with slightly diff elevation, long, lat so average
@@ -118,18 +70,11 @@ smammal.plot.data <- NEONsmammalcaptures %>%
             first.date = min(collectDate),
             last.date = max(collectDate),
             total.richness = length(na.omit(unique(taxonID))))
-
-sites <- sort(unique(smammal.captures$siteID))
-plots <- sort(unique(smammal.captures$plotID))
-
-trapnights <- numeric()
-for(i in 1:dim(smammal.plot.data)[1]){
-  site <- smammal.plot.data$siteID[i]
-  plot <- smammal.plot.data$plotID[i]
-  statl <- trapStatuslist[[site]]
-  trapnights[i] <- sum(statl[[plot]]$traps_available)
-}
-smammal.plot.data$trapnights <- trapnights
+trapstat <- trapping.info %>%
+  group_by(siteID, plotID) %>%
+  summarise(trapnights = sum(traps_available))
+smammal.plot.data <- left_join(smammal.plot.data,
+                               trapstat)
 
 dat2 <- NEONsmammalcaptures %>%
   group_by(siteID,plotID) %>%
@@ -203,10 +148,11 @@ smammal.sitehabitat.data <- smammal.plot.data %>%
   summarise(n.plots = length(unique(plotID)),
             total.trapnights = sum(trapnights),
             sum.uniqueIDs = sum(uniqueIDs),
-            mean.IDsper100trapnight = mean(IDsper100trapnights))
+            mean.IDsper100trapnights = mean(IDsper100trapnights))
 
 
-save(smammal.captures, smammal.plot.data, smammal.sitedates, trapStatuslist ,file="smammalcaptures.RData")
+save(smammal.captures, smammal.plot.data, #smammal.sitedates, 
+     trapping.info ,file="smammalcaptures.RData")
 
 
 ###############################################################################
@@ -301,58 +247,41 @@ source("FunctionsForNEONdata.R")
 
 
 ##create a list of dataframes of sessions for each plot
-prim.session.list <- NEON.primary.session.function(smammal.sitedates, int.break=10)
+trapping.session.info <- NEON.session.function(trapping.info, 
+                                                   int.break=10) #if interval is greater than 10 it's a different session
 
 
 # remove sessions that only have 1 night (won't help with estimation)
-reduced.prim.session.list <- lapply(prim.session.list, function(x){
-  dat <- x %>%
-    group_by(prim.session) %>%
-    summarise(n.days = length(unique(date)))
-  if(length(which(dat$n.days==1))>0){
-    rm.session <- dat$prim.session[which(dat$n.days==1)]
-    x[-match(rm.session, x$prim.session),]
-  } else {
-    x
-  }
-})
-which.empty <- which(unlist(lapply(reduced.prim.session.list, function(x){
-  dim(x)[1]}))==0)
-reduced.prim.session.list <- reduced.prim.session.list[-which.empty]
+reduced.trapping.session.info <- left_join(
+  trapping.session.info, 
+  trapping.session.info %>%
+    group_by(siteID, plotID, prim.session) %>%
+    summarise(keep = ifelse(any(Sec>1), 1, 0)) 
+  ) %>%
+  filter(keep==1) %>%
+  select(!keep)
 
-removed.sessions <- data.frame(plotID = character(), date = Date(), prim.session = numeric() )
-for(i in 1:length(prim.session.list)){
-  x <- prim.session.list[[i]]
-  dat <- x %>%
-    group_by(prim.session) %>%
-    summarise(n.days = length(unique(date)))
-  rm.session <- dat$prim.session[which(dat$n.days==1)]
-  if(length(rm.session)>0){
-    removed.sessions <- rbind(removed.sessions,
-                              data.frame(plotID = names(prim.session.list)[i], x[match(rm.session, x$prim.session),1:2]))
-  }
-}  
-# remove those from the captures
+# also remove those from the captures
 reduced.smammal.captures <- reduced.smammal.captures %>%
-  filter(!(paste(plotID, collectDate) %in% paste(removed.sessions$plotID, removed.sessions$date)))
+  filter((paste(plotID, collectDate) %in% paste(reduced.trapping.session.info$plotID, 
+                                                reduced.trapping.session.info$collectDate)))
 
 reduced.plots <- sort(unique(reduced.smammal.captures$plotID))
-summary(reduced.plots %in% names(reduced.prim.session.list))
+summary(reduced.plots %in% sort(unique(reduced.trapping.session.info$plotID)))
 #    Mode    TRUE 
 # logical     231 
-summary(names(reduced.prim.session.list) %in% reduced.plots)
+summary(sort(unique(reduced.trapping.session.info$plotID)) %in% reduced.plots)
 #    Mode   FALSE    TRUE 
-# logical       7     231  #<---------- this is ok if no animals were caught. seems to be the case.
+# logical       7     231  # this is ok if no animals were caught. seems to be the case.
 
 # function below needs them to be the same length, so remove plots from 
-# reduced.prim.session.list not in reduced.plots
-rm <- which(!names(reduced.prim.session.list) %in% reduced.plots)
-reduced.prim.session.list <- reduced.prim.session.list[-rm]
+# reduced.trapping.session.info not in reduced.plots
+reduced.trapping.session.info <- reduced.trapping.session.info %>%
+ filter(plotID %in% reduced.plots)
 
 
-save(smammal.plot.data, smammal.captures, smammal.sitedates,
-     trapStatuslist , prim.session.list,
-     reduced.smammal.captures, reduced.prim.session.list, reduced.plots,
+save(smammal.plot.data, smammal.captures, trapping.session.info,
+     reduced.smammal.captures, reduced.trapping.session.info, reduced.plots,
      file="NEONsmammalcapturesClean.RData")
 
 
@@ -385,7 +314,7 @@ write_excel_csv(taxon.cap.sum, file="SmammalTaxonCaps.csv")
 NEON.CHlong.all <- NEON.pRDcapture.history.long.fun(
     cleaned.data = reduced.smammal.captures, 
     ID.col = "plot_taxon_tag", # column to identify individuals
-    prim.session.list = reduced.prim.session.list, # list with plots, dates, and prim.session
+    session.info = reduced.trapping.session.info, 
     cols = c("genus", "species"), # which column names to keep as individual covariates
     taxon = "all")
 # takes < a minute
