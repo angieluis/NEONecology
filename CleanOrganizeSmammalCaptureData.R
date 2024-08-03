@@ -3,6 +3,9 @@
 ###############################################################################
 
 library(tidyverse)
+
+source("FunctionsForNEONdata.R")
+
 load("rawSmammalCaptureData.RData")
 names(smammal.capturedata)
 
@@ -151,8 +154,8 @@ smammal.sitehabitat.data <- smammal.plot.data %>%
             mean.IDsper100trapnights = mean(IDsper100trapnights))
 
 
-save(smammal.captures, smammal.plot.data, #smammal.sitedates, 
-     trapping.info ,file="smammalcaptures.RData")
+# save(smammal.captures, smammal.plot.data, 
+#      trapping.info ,file="smammalcaptures.RData")
 
 
 ###############################################################################
@@ -231,7 +234,7 @@ dim(dupes.taxsex)
 # [1] 5686    4
 # Yikes. 5686 have multiple species or sexes
 length(which(dupes.taxsex$n_taxonID>1))
-# 3207 tagIDs have multiple species assigned (within the same plot)
+# 3206 tagIDs have multiple species assigned (within the same plot)
 # I guess I'll make unique ID be plot_taxon_tag 
 # (it's possible some individuals move between plots within the same site,
 # but here I will consider them separate.)
@@ -242,13 +245,9 @@ reduced.smammal.captures <- reduced.smammal.captures %>%
 
 
 
-
-source("FunctionsForNEONdata.R")
-
-
 ##create a list of dataframes of sessions for each plot
 trapping.session.info <- NEON.session.function(trapping.info, 
-                                                   int.break=10) #if interval is greater than 10 it's a different session
+                                               int.break=10) #if interval is greater than 10 it's a different session
 
 
 # remove sessions that only have 1 night (won't help with estimation)
