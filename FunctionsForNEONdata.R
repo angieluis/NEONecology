@@ -6,9 +6,6 @@ library(tidyverse)
 
 
 ## To do: 
-# need tagID in CHlong state==0
-# Move adding the Secondary occasion to the primary.session.function
-#    instead of within the capture history function.
 # Could add "yearmon" option to CH instead of prim.session
 # or update "yearmon" so adjusts based on prim.session?
 
@@ -171,3 +168,64 @@ NEON.pRDcapture.history.long.fun <- function(
   
   
   
+## function to calculate number of captures per any taxa (group) ----------- ##
+
+taxa.capture.fun <- function(
+  captures = reduced.smammal.captures, 
+  prim.session.list = reduced.prim.session.list,
+  group = "species", # "species" or "genus" or other group identified in captures
+  taxa.to.include = NULL){ #  if NULL, then use all. Otherwise a vector of 4-letter species codes
+  # (or other levels of group) to include
+  
+  
+  if(length(taxa.to.include)==0){
+    taxa.to.include <- sort(as.character(unique(as.data.frame(reduced.smammal.captures)[ , group])))
+  } 
+  n.taxa <- length(taxa.to.include)
+  
+  if(length(which(names(captures)=="date"))==0){
+    captures$date <- captures$collectDate
+  }
+  
+  prim.session.long <- data.frame(plotID = character(0),
+                                  date = Date(0),
+                                  prim.session = numeric(0),
+                                  Sec = numeric(0))
+  
+  for(i in 1:length(prim.session.list)){
+    dat <- data.frame(plotID = names(prim.session.list)[i],
+                      prim.session.list[[i]])
+    sec <- numeric()
+    for(s in unique(dat$prim.session)){
+      sec <- c(sec, 1:length(which(dat$prim.session==s)))
+    }
+    dat$Sec <- sec
+    
+    prim.session.long <- rbind(prim.session.long, dat)
+  }
+  
+  captures$n <- 1
+  
+  out.data <- left_join(captures, prim.session.long)
+  
+  out.data <- out.data %>%
+    group_by(siteID, plotID, prim.session, species) %>%
+    count(plot_taxon_tag) %>%
+    count(species)
+
+  prim.ses <- prim.session.long %>%
+    group_by(plotID, prim.session) %>%
+    summarise(first.dat = min(date),
+              n.sec.occ = length(unique(date)))
+  
+  out.data <- left_join(out.data, prim.ses)
+  
+  out.wide <- out.data %>%
+       pivot_wider(
+         names_from = all_of(group),
+         values_from = n,
+         values_fn = ~ sum(.x, na.rm=TRUE))
+  out.wide <- replace(out.wide, is.na(out.wide), 0)
+  out.wide <- out.wide[, c(1:5, order(names(out.wide)[6:dim(out.wide)[2]])+5)]
+  
+}
