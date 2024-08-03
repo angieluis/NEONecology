@@ -30,6 +30,8 @@ trap.status.function <- function(captures = NEONsmammalcaptures){
     # capture per trap - from those, calculate number of unique trapCoordinates, which are rows
     filter(traps_available != 0) # remove all the rows with 0 traps set
 
+  return(traps.avail)
+  
   }
 
 site.date.function <- function()
@@ -49,43 +51,39 @@ dupes.fun <- function(data, ...) {
 
 ## Multisite primary session function ----------------------------------- ##
 
-NEON.primary.session.function <- function(site.dates = smammal.sitedates,# a list within a list 
-                                          int.break = 10){  #if interval is greater than 10 it's a different session
-  primary.session.list <- list()
-  counter <- 1
-  for(i in 1:length(site.dates)){
-    datesite <- site.dates[[i]]
-    for(p in 1:length(site.dates[[i]])){
-      ints <- diff(datesite[[p]]) #gives intervals
-      ints <- c(ints, int.break+1) #add extra one on end so counts last interval
-      breaks <- which(ints>int.break)
-      num <- length(breaks)
-      session.num <- rep(1:num, times=diff(c(0,breaks)))
-      sessiondf <- data.frame(date = datesite[[p]], prim.session = session.num)
-      yearmon <- character()
-      for(m in 1:length(unique(sessiondf$prim.session))){
-        d <- gsub("-", "", as.character(sessiondf$date[max(which(sessiondf$prim.session==m))]))
-        yearmon[which(sessiondf$prim.session==m)] <- unique(substr(d,start=1,stop=6))
-      }
-      sessiondf$yearmon <- yearmon
-      primary.session.list[[counter]] <- sessiondf
-      names(primary.session.list)[counter] <- names(datesite)[p]
-      counter <- counter + 1
-    }
-  }
-  return(primary.session.list)
+# as long data
+NEON.session.function <- function(trap.availability.longdata = trapping.info, # output from trap.status.function
+                                  int.break = 10){  #if interval is greater than 10 days it's a different primary session
+  
+  data <- trap.availability.longdata %>%
+    group_by(siteID, plotID) %>%
+    mutate(ints = c( diff.Date(collectDate), int.break + 1 )) %>%
+    mutate(prim.session = rep(1:length(which(ints>int.break)), times=diff(c(0,which(ints>int.break))))) %>%
+    group_by(plotID, prim.session) %>%
+    mutate(Sec = row_number()) %>%
+    ungroup()
+  
+   return(data)
 }
-# returns a list of dataframes (for each plot) that contain dates trapped, primary session (1:m), and yearmon
-# yearmon is still a problem, when there was trapping early in the month and late in the month
-# prim.session is better. e.g., 
-#          date prim.session yearmon
-# 4  2019-07-30            2  201908
-# 5  2019-07-31            2  201908
-# 6  2019-08-01            2  201908
-# 7  2019-08-27            3  201908
-# 8  2019-08-28            3  201908
-# 9  2019-08-29            3  201908
-# But then prim.session numbers won't line up across sites over time.
+# returns a long dataframe that contain dates trapped, number of traps set,
+# time until next trapping day (with 11 on the last occasion because that's 1 more 
+# than the default break. will need to be removed if do anything with intervals)
+# Also primary occasion starting at 1 for first primary sessoin per plot
+# Sec is secondary occasion or day
+#   siteID plotID   collectDate         traps_available ints     prim.session   Sec
+#   <chr>  <chr>    <dttm>                        <int> <drtn>          <int> <int>
+# 1 ABBY   ABBY_004 2021-07-06 00:00:00             100   1 days           17     1
+# 2 ABBY   ABBY_004 2021-07-07 00:00:00             100   1 days           17     2
+# 3 ABBY   ABBY_004 2021-07-08 00:00:00             100  25 days           17     3
+# 4 ABBY   ABBY_004 2021-08-02 00:00:00              98   1 days           18     1
+# 5 ABBY   ABBY_004 2021-08-03 00:00:00              98   1 days           18     2
+# 6 ABBY   ABBY_004 2021-08-04 00:00:00             100  28 days           18     3
+# 7 ABBY   ABBY_004 2021-09-01 00:00:00              99   1 days           19     1
+# 8 ABBY   ABBY_004 2021-09-02 00:00:00              99   1 days           19     2
+# 9 ABBY   ABBY_004 2021-09-03 00:00:00             100 290 days           19     3
+
+
+
 
 
 ## function to create capture history as long data ------------------------- ##
@@ -98,41 +96,20 @@ NEON.primary.session.function <- function(site.dates = smammal.sitedates,# a lis
 # This is for estimating recapture rates only, with grouping columns assumed
 # to be in the data (e.g., column called species).
 # This will not work for survival estimation (because only have sessions animals were caught).
-# This is using prim.session from the primary session list from above function
-# not yearmon. Could update code so could use either.
 # Because of the messy data - sometimes same tag same date, same plot, multiple species
 # take the first duplicate row per plot,date,ID as covariate info (not all that many)
 NEON.pRDcapture.history.long.fun <- function(
     cleaned.data = reduced.smammal.captures, # 'cleaned' needs column 'plotID', 
-    ID.col, # column name of unique individual ID
-    prim.session.list = reduced.prim.session.list, # list with plots, dates, and prim.session
-    #session.type = "prim.session", # alternative is "yearmon". see above function --- not implemented
+    ID.col = "plot_taxon_tag", # column name of unique individual ID
+    session.info = reduced.trapping.session.info, # output from NEON.session.function
+    #prim.session.list = reduced.prim.session.list, # list with plots, dates, and prim.session
     cols = c("genus", "species"), # which column names to keep as individual covariates (in addition to site, plot, taxon)
     taxon = "all") { # taxonID (4_letter code) or "all" 
   
   names(cleaned.data)[which(names(cleaned.data)==ID.col)] <- "site_tag"
   
-  plots <- names(prim.session.list)
-  prim.session.long <- data.frame(plotID = character(0),
-                                  date = Date(0),
-                                  prim.session = numeric(0),
-                                  Sec = numeric(0))
-  
-  for(i in 1:length(prim.session.list)){
-    dat <- data.frame(plotID = names(prim.session.list)[i],
-                      prim.session.list[[i]])
-    sec <- numeric()
-    for(s in unique(dat$prim.session)){
-      sec <- c(sec, 1:length(which(dat$prim.session==s)))
-    }
-    dat$Sec <- sec
-    
-    prim.session.long <- rbind(prim.session.long, dat)
-  }
-  
-  if(length(which(names(cleaned.data)=="date"))==0){
-    cleaned.data$date <- cleaned.data$collectDate
-  }
+  plots <- sort(unique(session.info$plotID))
+
   cleaned.data <- cleaned.data %>%
     filter(plotID %in% plots)
   
@@ -146,34 +123,31 @@ NEON.pRDcapture.history.long.fun <- function(
   
   sp.data$State <- 1 # State == 1  for caught
   
-  long.dat <- left_join(sp.data, prim.session.long)
+  long.dat <- left_join(sp.data, session.info)
   
   # keep individual-level data we care about for each prim.session
   prim.ses.dat <- long.dat %>%
     group_by(siteID, plotID, site_tag, prim.session, across(all_of(cols))) %>%
-    summarise(n=n())
+    summarise(n=n()) %>%
+    select(!n)
 
   
   eg <- expand.grid(site_tag = unique(sp.data$site_tag[which(sp.data$plotID==plots[1])]), 
-           date = prim.session.long$date[which(prim.session.long$plotID==plots[1])])
+           collectDate = session.info$collectDate[which(session.info$plotID==plots[1])])
   eg$plotID <-  plots[1]
   for(p in 2:length(plots)){
     egn <- expand.grid(site_tag = unique(sp.data$site_tag[which(sp.data$plotID==plots[p])]), 
-                       date = prim.session.long$date[which(prim.session.long$plotID==plots[p])])
+                       collectDate = session.info$collectDate[which(session.info$plotID==plots[p])])
     egn$plotID <- plots[p]
     eg <- rbind(eg, egn)
   }
-  # eg$State <- 0 # State == 0 for not caught # Wait - is this overwriting those that were caught?
-  
-  full.session.dat <- left_join(eg, prim.session.long) 
+
+  full.session.dat <- left_join(eg, session.info) 
   
   full.session.dat <- full_join(full.session.dat, prim.ses.dat, relationship="many-to-one")
 
-  #long.dat$State[which(is.na(long.dat$State))] <- 0
-  
   long.dat <- long.dat %>%
-    select(siteID, plotID, site_tag, all_of(cols), date, prim.session, 
-           #yearmon, 
+    select(siteID, plotID, site_tag, all_of(cols), collectDate, prim.session, 
            Sec, State)
 
   long.dat <- full_join(long.dat, full.session.dat)
@@ -195,11 +169,12 @@ NEON.pRDcapture.history.long.fun <- function(
 
 taxa.capture.fun <- function(
   captures = reduced.smammal.captures, 
-  prim.session.list = reduced.prim.session.list,
+  #prim.session.list = reduced.prim.session.list,
+  session.info = reduced.trapping.session.info,
   group = "species", # "species" or "genus" or other group identified in captures
-  taxa.to.include = NULL, #  if NULL, then use all. Otherwise a vector of 4-letter species codes
+  taxa.to.include = NULL, #  if NULL, then use all. Otherwise a vector of 4-letter species codes (or other levels of group) to include
   wide.or.long = "wide"){ # output as wide (with columns for taxa) or long?
-  # (or other levels of group) to include
+  
   
   
   if(length(taxa.to.include)==0){
@@ -207,40 +182,41 @@ taxa.capture.fun <- function(
   } 
   n.taxa <- length(taxa.to.include)
   
-  if(length(which(names(captures)=="date"))==0){
-    captures$date <- captures$collectDate
-  }
-  
-  prim.session.long <- data.frame(plotID = character(0),
-                                  date = Date(0),
-                                  prim.session = numeric(0),
-                                  Sec = numeric(0))
-  
-  for(i in 1:length(prim.session.list)){
-    dat <- data.frame(plotID = names(prim.session.list)[i],
-                      prim.session.list[[i]])
-    sec <- numeric()
-    for(s in unique(dat$prim.session)){
-      sec <- c(sec, 1:length(which(dat$prim.session==s)))
-    }
-    dat$Sec <- sec
-    
-    prim.session.long <- rbind(prim.session.long, dat)
-  }
+  # if(length(which(names(captures)=="date"))==0){
+  #   captures$date <- captures$collectDate
+  # }
+  # 
+  # prim.session.long <- data.frame(plotID = character(0),
+  #                                 date = Date(0),
+  #                                 prim.session = numeric(0),
+  #                                 Sec = numeric(0))
+  # 
+  # for(i in 1:length(prim.session.list)){
+  #   dat <- data.frame(plotID = names(prim.session.list)[i],
+  #                     prim.session.list[[i]])
+  #   sec <- numeric()
+  #   for(s in unique(dat$prim.session)){
+  #     sec <- c(sec, 1:length(which(dat$prim.session==s)))
+  #   }
+  #   dat$Sec <- sec
+  #   
+  #   prim.session.long <- rbind(prim.session.long, dat)
+  # }
   
   captures$n <- 1
   
-  out.data <- left_join(captures, prim.session.long)
+  out.data <- left_join(captures, session.info)
   
   out.data <- out.data %>%
     group_by(siteID, plotID, prim.session, species) %>%
     count(plot_taxon_tag) %>%
     count(species)
 
-  prim.ses <- prim.session.long %>%
+  prim.ses <- session.info %>%
     group_by(plotID, prim.session) %>%
-    summarise(first.dat = min(date),
-              n.sec.occ = length(unique(date)))
+    summarise(first.dat = min(collectDate),
+              n.sec.occ = length(unique(collectDate)),
+              trapnights = sum(traps_available))
   
   out.data <- left_join(out.data, prim.ses)
   
