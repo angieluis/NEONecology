@@ -9,10 +9,33 @@ library(tidyverse)
 # Could add "yearmon" option to CH instead of prim.session
 # or update "yearmon" so adjusts based on prim.session?
 
+## Function to get trapping info including date & number traps set ---------- ##
+
+trap.status.function <- function(captures = NEONsmammalcaptures){
+  
+  statuslong <- NEONsmammalcaptures %>%
+    # since trapStatus=="4 - more than 1 capture in one trap" will have multiple rows per trap, 
+    # I need to also include trapCoordinate so can make sure don't count same trap multiple times
+    mutate(trapStatus = ifelse(trapStatus=="4 - more than 1 capture in one trap", 
+                                paste(trapStatus, trapCoordinate, sep="_"), trapStatus)) %>%
+    group_by(siteID, plotID, collectDate) %>%
+    count(trapStatus) %>%
+    mutate(trapStatus2 = as.numeric(str_trunc(trapStatus, width=1, ellipsis = "")))
+    
+  traps.avail <- statuslong %>%
+    group_by(siteID, plotID, collectDate) %>%
+    summarise(traps_available = sum(n[trapStatus2 %in% c(2,3,5,6)]) + 
+                length(which(trapStatus2 == 4))) %>% 
+    # group trapStatus2 == 2-6 are available, [1 is not set] but trapStatus2 == 4 is more than 1 
+    # capture per trap - from those, calculate number of unique trapCoordinates, which are rows
+    filter(traps_available != 0) # remove all the rows with 0 traps set
+
+  }
+
+site.date.function <- function()
 
 
 ## Function to look for duplicates ------------------------------------------ ##
-
 
 # does not show first occurrence
 dupes.fun <- function(data, ...) {
@@ -26,7 +49,7 @@ dupes.fun <- function(data, ...) {
 
 ## Multisite primary session function ----------------------------------- ##
 
-NEON.primary.session.function <- function(site.dates = reducedSWsitedates,# a list within a list 
+NEON.primary.session.function <- function(site.dates = smammal.sitedates,# a list within a list 
                                           int.break = 10){  #if interval is greater than 10 it's a different session
   primary.session.list <- list()
   counter <- 1
@@ -174,7 +197,8 @@ taxa.capture.fun <- function(
   captures = reduced.smammal.captures, 
   prim.session.list = reduced.prim.session.list,
   group = "species", # "species" or "genus" or other group identified in captures
-  taxa.to.include = NULL){ #  if NULL, then use all. Otherwise a vector of 4-letter species codes
+  taxa.to.include = NULL, #  if NULL, then use all. Otherwise a vector of 4-letter species codes
+  wide.or.long = "wide"){ # output as wide (with columns for taxa) or long?
   # (or other levels of group) to include
   
   
@@ -220,12 +244,62 @@ taxa.capture.fun <- function(
   
   out.data <- left_join(out.data, prim.ses)
   
-  out.wide <- out.data %>%
+  if(wide.or.long == "wide"){
+    out.wide <- out.data %>%
        pivot_wider(
          names_from = all_of(group),
          values_from = n,
          values_fn = ~ sum(.x, na.rm=TRUE))
-  out.wide <- replace(out.wide, is.na(out.wide), 0)
-  out.wide <- out.wide[, c(1:5, order(names(out.wide)[6:dim(out.wide)[2]])+5)]
+    out.wide <- replace(out.wide, is.na(out.wide), 0)
+    out.wide <- out.wide[, c(1:5, order(names(out.wide)[6:dim(out.wide)[2]])+5)]
+    return(out.wide)
+  }
+  if(wide.or.long == "long"){
+    return(out.data)
+  }
   
 }
+
+
+#<------------------------------------------------------------------------------------- Stopped here
+## Function to estimate population abundance -------------------------------- ##
+# given captures and species-specific capture rates
+
+
+NEON.Nestimates.fromcaptures <- function(num.captures = smammal.species.num.captures.widedata, #output from taxa.capture.fun function
+                                         p.estimates = p.species.estimates, # summary of Bayesian estimates as data.frame
+                                         group = "species", # same label as column in p.estimates
+                                         prim.session.list = reduced.prim.session.list,
+                                         trapStatuslist = trapStatuslist){ # do I need to reduce this?
+  
+  mat.ind <- which(names(num.captures)=="n.sec.occ") + 1
+  sp.caps <- num.captures[, mat.ind:(dim(num.captures)[2])]
+  restof.data <- num.captures[, 1:(mat.ind-1)]
+  
+  trap.nights <- numeric()
+  for(j in 1:dim(restof.data)[1]){
+    site <- str_split_1(restof.data$plot[j], "_")[1]
+    prim.sessions <- prim.session.list[[restof.data$plot[j]]]
+    session.dates <- prim.sessions$date[which(prim.sessions$prim.session == restof.data$prim.session[j])]
+    tsl <- trapStatuslist[[site]][[restof.data$plot[j]]]
+    trap.nights[j] <- sum(tsl$traps_available[match(session.dates, tsl$date)])
+  }
+  restof.data$trapnights <- trap.nights
+  
+  n.species <- dim(sp.caps)[2]
+  p.estimates <- p.estimates[match(names(sp.caps), p.estimates[,group] ),] ###########################
+  p <- p.estimates$mean  
+  p.effmat <- matrix(NA, nrow=dim(sp.caps)[1], ncol=dim(sp.caps)[2])
+  for(i in 1:n.species){
+    for(t in 1:dim(p.effmat)[1]){
+      p.effmat[t, i] <- 1 - (1 - p[i])^num.captures$n.sec.occ[t]
+    }
+  }
+  
+  N.estmat <- sp.caps / p.effmat / (restof.data$trapnights / restof.data$n.sec.occ / 100)
+  Nestdf <- data.frame(restof.data, N.estmat, check.names = FALSE)
+  
+  
+  return(Nestdf)
+}
+
