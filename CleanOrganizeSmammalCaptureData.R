@@ -249,7 +249,12 @@ smammal.captures.clean <- smammal.captures.clean %>%
 trapping.session.info <- NEON.session.function(trapping.info, 
                                                int.break=10) #if interval is greater than 10 it's a different session
 
-
+dat <- trapping.session.info %>%
+  group_by(plotID, prim.session) %>%
+  summarise(trapnights = sum(traps_available))
+summary(dat)
+hist(dat$trapnights, breaks=30)
+hist(dat$trapnights[which(dat$trapnights<100)], breaks=30)
 
 ################################################################################
 ### For capture rate estimation - Remove sessions that only have 1 night ---- ## 

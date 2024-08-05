@@ -254,3 +254,36 @@ smammal.species.estimates.longdata <- NEON.N.estimates.fromcaptures.MMmodel(
     p.param.estimates = p.speciestrapMM.model.estimates, # summary of Bayesian estimates as data.frame
     group = "species", # same label as column in p.param.estimates
     wide.or.long = "long")
+# 5 rows with NAs, which are species that were not in the reduced data used to estimate. 
+# "Tamiasciurus douglasii" "Sylvilagus nuttallii"   "Sorex nanus"            "Neotoma cinerea"        "Sylvilagus nuttallii"  
+# each of these were caught once in the whole dataset. So just use captures for that instead of N. 
+smammal.species.estimates.longdata$N.est[which(is.na(smammal.species.estimates.longdata$N.est))] <-
+  smammal.species.estimates.longdata$n_caps[which(is.na(smammal.species.estimates.longdata$N.est))]
+
+# for sessions with very low trapnights, it's going to overestimate N 
+# because prob of capture is so low
+# (with unrealistically skinny CI based on the constraints of the model)
+
+dat <- trapping.session.info %>%
+  group_by(plotID, prim.session) %>%
+  summarise(trapnights = sum(traps_available))
+summary(dat)
+hist(dat$trapnights, breaks=30)
+hist(dat$trapnights[which(dat$trapnights<100)], breaks=30)
+quantile(dat$trapnights, probs= c(0.01, 0.1, 0.25, 0.5))
+
+# remove sessions with fewer than 51 trapnights [1% of the plot-sessions] ----##
+
+smammal.species.estimates.longdata <- smammal.species.estimates.longdata %>%
+  filter(trapnights > 50)
+summary(smammal.species.estimates.longdata)
+
+ggplot(smammal.species.estimates.longdata, aes(x=n_caps, y=N.est, col=trapnights)) +
+  geom_point() +
+  geom_line(aes(x=n_caps, y=n_caps), color = "gray") +
+  ggtitle("Comparison of captures and N estimates")
+ 
+
+       
+
+save(smammal.species.estimates.longdata, )

@@ -45,7 +45,7 @@ trap.status.function <- function(captures = NEONsmammalcaptures){
   
   }
 
-site.date.function <- function()
+
 
 
 ## Function to look for duplicates ------------------------------------------ ##
@@ -63,8 +63,9 @@ dupes.fun <- function(data, ...) {
 ## Multisite primary session function ----------------------------------- ##
 
 # as long data
-NEON.session.function <- function(trap.availability.longdata = trapping.info, # output from trap.status.function
-                                  int.break = 10){  #if interval is greater than 10 days it's a different primary session
+NEON.session.function <- function(
+    trap.availability.longdata = trapping.info, # output from trap.status.function
+    int.break = 10){  #if interval is greater than 10 days it's a different primary session
   
   data <- trap.availability.longdata %>%
     group_by(siteID, plotID) %>%
@@ -101,7 +102,7 @@ NEON.session.function <- function(trap.availability.longdata = trapping.info, # 
 
 # Function to get longdata format capture history for estimating recapture
 # rates, only using sessions when an animal was caught at least once.
-# Keeping as longdata but need to add rows to data for when an individual
+# This keeps capture info as longdata but adds rows to data for when an individual
 # was caught within that primary session but not a secondary occasion
 # add a State=0 for not caught 
 # This is for estimating recapture rates only, with grouping columns assumed
@@ -177,6 +178,7 @@ NEON.pRDcapture.history.long.fun <- function(
   
   
 ## function to calculate number of captures per any taxa (group) ----------- ##
+# per primary occasion, and trapnights
 
 taxa.capture.fun <- function(
   captures = reduced.smammal.captures, 
@@ -204,7 +206,7 @@ taxa.capture.fun <- function(
 
   prim.ses <- session.info %>%
     group_by(plotID, prim.session) %>%
-    summarise(first.dat = min(collectDate),
+    summarise(first.date = min(collectDate),
               n.sec.occ = length(unique(collectDate)),
               trapnights = sum(traps_available))
   
@@ -228,8 +230,9 @@ taxa.capture.fun <- function(
 
 
 
-## Functions to estimate population abundance -------------------------------- ##
+## Functions to estimate population abundance per primary session ----------- ##
 # given captures and species-specific (and trapnight adjusted) capture rates 
+
 
 # this only works for species model, that assumes number of traps don't matter.
 # p.species.estimates needs to have column "species", and "intercept", 
@@ -246,19 +249,10 @@ NEON.N.estimates.fromcaptures.speciesmodel <- function(
   
   data <- left_join(num.captures, p.estimates)
   
-  # if(model == "species-trap"){ #no longer useing this model -it's dumb
-  #   
-  #   data <- data %>%
-  #    mutate(
-  #      trapnights_transformed = (trapnights+1)/100, # reverse of transformation before model
-  #      p_night = rev.logit(intercept + trap_slope * (trapnights_transformed/n.sec.occ)), # assuming trapnights evenly among secondary nights of primary occasion
-  #      p_eff = 1 - (1 - p_night)^n.sec.occ)
-  # }
-  #if(model == "species"){
-    data <- data %>%
+  data <- data %>%
       mutate(p_night = intercept,
              p_eff = 1 - (1 - p_night)^n.sec.occ) 
-  #}
+  
   
   data <- data %>%
     mutate(N.est = n_caps / p_eff)
