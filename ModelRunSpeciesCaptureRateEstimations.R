@@ -3,13 +3,18 @@
 # Model specification and run code for estimating species specific capture 
 # rates using closed Bayesian mark-recapture models from capture data 
 
-# see "FunctionsForAllSpeciesEstimations.R" for data functions
-# see "FormatCapturesForAllSpeciesEstimations.R" for using them to format data
+# Only covariate is species. These all ignore differences in number of 
+# traps set per night --------------------------------------------------- ##
+# assumes all nights all plots are the same ----------------------------- ##
+# So not a good model
+
+
+# see "FunctionsForNEONdata.R" for data functions
+# see "CleanOrganizeSmammalCaptureData.R" for cleaning and formatting data
 ############################################################################
 
-
 # source in functions
-source("FunctionsForEstimatingN_NEON.R")
+source("FunctionsForNEONdata.R")
 
 # load data formatted for these models
 load("NEONchForPmodels.RData")
@@ -21,15 +26,14 @@ NEON.CHlong.all$species.num <- taxon.cap.sum$species.num[match(NEON.CHlong.all$s
 NEON.CHlong.all$genus.num <- taxon.cap.sum$genus.num[match(NEON.CHlong.all$genus,
                                                                taxon.cap.sum$genus)]
 
-# there are some families in here : muridae and crecitidae 
-# should prob remove
+
 
 ################################################################################
 ## Specify the Robust Design monthly Closed Model---------------------------- ##
 ################################################################################
 
 
-sink("RDallsitesN.bug")
+sink("RDp_species.bug")
 
 cat("
      
@@ -97,7 +101,7 @@ date()
 NEONAllsites.species.p.mod <- jags(data = bugs.data,
                                    inits, 
                                    parameters, 
-                                   "RDallsitesN.bug", 
+                                   "RDp_species.bug", 
                                    n.chains = 3, 
                                    n.thin   = 5, 
                                    n.iter   = 10000, 
@@ -167,7 +171,7 @@ date()
 NEONAllsites.genus.p.mod <- jags(data = bugs.data,
                                    inits, 
                                    parameters, 
-                                   "RDallsitesN.bug", 
+                                   "RDp_species.bug", 
                                    n.chains = 3, 
                                    n.thin   = 5, 
                                    n.iter   = 10000, 
@@ -203,3 +207,17 @@ dev.off()
 
 
 
+###############################################################################
+## Use estimates to adjust captures for abundance estimates
+###############################################################################
+
+# should do this for all captures not just the reduced ones 
+# ie. also include those only trapped 1 night per session
+
+smammal.species.num.captures.widedata <- taxa.capture.fun(
+    captures = reduced.smammal.captures, 
+    session.info = reduced.trapping.session.info,
+    group = "species", # "species" or "genus" or other group identified in captures
+    taxa.to.include = NULL, #  if NULL, then use all. Otherwise specify level of group
+    wide.or.long = "wide") # output as wide (with columns for taxa) or long?
+  

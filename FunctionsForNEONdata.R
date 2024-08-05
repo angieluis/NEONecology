@@ -4,10 +4,21 @@
 
 library(tidyverse)
 
+## Logit function ----------------------------------------------------------- ##
 
-## To do: 
-# Could add "yearmon" option to CH instead of prim.session
-# or update "yearmon" so adjusts based on prim.session?
+
+logit <- function(x) {
+  log(x / (1 - x))
+}
+
+
+# Reverse logit funciton ---------------------------------------------------- ##
+
+
+rev.logit <- function(x) {
+  exp(x) / (1 + exp(x))
+}
+
 
 ## Function to get trapping info including date & number traps set ---------- ##
 
@@ -169,47 +180,26 @@ NEON.pRDcapture.history.long.fun <- function(
 
 taxa.capture.fun <- function(
   captures = reduced.smammal.captures, 
-  #prim.session.list = reduced.prim.session.list,
   session.info = reduced.trapping.session.info,
   group = "species", # "species" or "genus" or other group identified in captures
+  ID.col = "plot_taxon_tag", # individual identifier as character vector, e.g., "tagID"
   taxa.to.include = NULL, #  if NULL, then use all. Otherwise a vector of 4-letter species codes (or other levels of group) to include
-  wide.or.long = "wide"){ # output as wide (with columns for taxa) or long?
+  wide.or.long = "long"){ # output as wide (with columns for taxa) or long?
   
-  
+  names(captures)[which(names(captures)==ID.col)] <- "ID"
   
   if(length(taxa.to.include)==0){
     taxa.to.include <- sort(as.character(unique(as.data.frame(reduced.smammal.captures)[ , group])))
   } 
   n.taxa <- length(taxa.to.include)
-  
-  # if(length(which(names(captures)=="date"))==0){
-  #   captures$date <- captures$collectDate
-  # }
-  # 
-  # prim.session.long <- data.frame(plotID = character(0),
-  #                                 date = Date(0),
-  #                                 prim.session = numeric(0),
-  #                                 Sec = numeric(0))
-  # 
-  # for(i in 1:length(prim.session.list)){
-  #   dat <- data.frame(plotID = names(prim.session.list)[i],
-  #                     prim.session.list[[i]])
-  #   sec <- numeric()
-  #   for(s in unique(dat$prim.session)){
-  #     sec <- c(sec, 1:length(which(dat$prim.session==s)))
-  #   }
-  #   dat$Sec <- sec
-  #   
-  #   prim.session.long <- rbind(prim.session.long, dat)
-  # }
-  
+
   captures$n <- 1
   
   out.data <- left_join(captures, session.info)
   
   out.data <- out.data %>%
     group_by(siteID, plotID, prim.session, species) %>%
-    count(plot_taxon_tag) %>%
+    count(ID) %>%
     count(species)
 
   prim.ses <- session.info %>%
@@ -227,7 +217,7 @@ taxa.capture.fun <- function(
          values_from = n,
          values_fn = ~ sum(.x, na.rm=TRUE))
     out.wide <- replace(out.wide, is.na(out.wide), 0)
-    out.wide <- out.wide[, c(1:5, order(names(out.wide)[6:dim(out.wide)[2]])+5)]
+    out.wide <- out.wide[, c(1:6, order(names(out.wide)[7:dim(out.wide)[2]])+6)]
     return(out.wide)
   }
   if(wide.or.long == "long"){
@@ -237,45 +227,107 @@ taxa.capture.fun <- function(
 }
 
 
-#<------------------------------------------------------------------------------------- Stopped here
-## Function to estimate population abundance -------------------------------- ##
-# given captures and species-specific capture rates
+
+## Functions to estimate population abundance -------------------------------- ##
+# given captures and species-specific (and trapnight adjusted) capture rates 
+
+# this only works for species model, that assumes number of traps don't matter.
+# p.species.estimates needs to have column "species", and "intercept", 
+NEON.N.estimates.fromcaptures.speciesmodel <- function(
+    num.captures = smammal.species.num.captures.longdata, #output from taxa.capture.fun function in long format
+    p.param.estimates = p.species.estimates, # summary of Bayesian estimates as data.frame
+    group = "species", # same label as column in p.param.estimates
+    #model = "species-trap", # options are "species-trap" or "species" model. see model run code for model specification
+#    calc.CI = TRUE, # calculate upper and lower CIs based on CIs of estimates
+    model = expression(), # using column names in p.param.estimates (and covariates in num.captures)
+    wide.or.long = "long"){ 
+  
+  names(num.captures)[which(names(num.captures)=="n")] <- "n_caps"
+  
+  data <- left_join(num.captures, p.estimates)
+  
+  # if(model == "species-trap"){ #no longer useing this model -it's dumb
+  #   
+  #   data <- data %>%
+  #    mutate(
+  #      trapnights_transformed = (trapnights+1)/100, # reverse of transformation before model
+  #      p_night = rev.logit(intercept + trap_slope * (trapnights_transformed/n.sec.occ)), # assuming trapnights evenly among secondary nights of primary occasion
+  #      p_eff = 1 - (1 - p_night)^n.sec.occ)
+  # }
+  #if(model == "species"){
+    data <- data %>%
+      mutate(p_night = intercept,
+             p_eff = 1 - (1 - p_night)^n.sec.occ) 
+  #}
+  
+  data <- data %>%
+    mutate(N.est = n_caps / p_eff)
+ 
+  if(wide.or.long == "wide"){
+    out.wide <- data %>%
+      pivot_wider(
+        names_from = all_of(group),
+        values_from = N.est,
+        values_fn = ~ sum(.x, na.rm=TRUE))
+    out.wide <- replace(out.wide, is.na(out.wide), 0)
+    inds <- match(p.param.estimates[group][,1], names(out.wide))
+    out.wide <- out.wide[ , c(1:(min(inds)-1), inds)]
+    return(out.wide)
+  }
+  if(wide.or.long == "long"){
+    return(data)
+  }
+  
+}
 
 
-NEON.Nestimates.fromcaptures <- function(num.captures = smammal.species.num.captures.widedata, #output from taxa.capture.fun function
-                                         p.estimates = p.species.estimates, # summary of Bayesian estimates as data.frame
-                                         group = "species", # same label as column in p.estimates
-                                         prim.session.list = reduced.prim.session.list,
-                                         trapStatuslist = trapStatuslist){ # do I need to reduce this?
+# try specifying model by expression
+# and eval(expr, envir) # expression and named data
+
+
+# Michaelis-Menten model where estimate is half saturation constant of 
+# the effect of traps
+# columns in p.param.estimates are 'species', 'trap_k' (estimate),
+# 'trap_kLCI' and 'trap_kUCI' for lower and upper CI of estimate 
+# See "ModelRunSpeciesTrapMMCaptureRateEstimations.R"
+NEON.N.estimates.fromcaptures.MMmodel <- function(
+    num.captures = smammal.species.num.captures.longdata, #output from taxa.capture.fun function in long format
+    p.param.estimates = p.speciestrapMM.model.estimates, # summary of Bayesian estimates as data.frame
+    group = "species", # same label as column in p.param.estimates
+    wide.or.long = "long"){ 
   
-  mat.ind <- which(names(num.captures)=="n.sec.occ") + 1
-  sp.caps <- num.captures[, mat.ind:(dim(num.captures)[2])]
-  restof.data <- num.captures[, 1:(mat.ind-1)]
+  names(num.captures)[which(names(num.captures)=="n")] <- "n_caps"
   
-  trap.nights <- numeric()
-  for(j in 1:dim(restof.data)[1]){
-    site <- str_split_1(restof.data$plot[j], "_")[1]
-    prim.sessions <- prim.session.list[[restof.data$plot[j]]]
-    session.dates <- prim.sessions$date[which(prim.sessions$prim.session == restof.data$prim.session[j])]
-    tsl <- trapStatuslist[[site]][[restof.data$plot[j]]]
-    trap.nights[j] <- sum(tsl$traps_available[match(session.dates, tsl$date)])
+  data <- left_join(num.captures, p.param.estimates)
+  
+
+  data <- data %>%
+     mutate(
+       trapnights_transformed = trapnights/100, # reverse of transformation before model
+       p_night = (trapnights_transformed/n.sec.occ) / (trap_k + (trapnights_transformed/n.sec.occ)), # assuming trapnights evenly among secondary nights of primary occasion
+       p_night_upper = (trapnights_transformed/n.sec.occ) / (trap_kUCI + (trapnights_transformed/n.sec.occ)),
+       p_night_lower = (trapnights_transformed/n.sec.occ) / (trap_kLCI + (trapnights_transformed/n.sec.occ)),
+       p_eff = 1 - (1 - p_night)^n.sec.occ,
+       p_eff_upper = 1 - (1 - p_night_upper)^n.sec.occ,
+       p_eff_lower = 1 - (1 - p_night_lower)^n.sec.occ,
+       N.est = n_caps / p_eff,
+       N.est_upper = n_caps / p_eff_upper,
+       N.est_lower = n_caps / p_eff_lower)
+  
+  if(wide.or.long == "wide"){ # doesn't include confidence intervals
+    out.wide <- data %>%
+      pivot_wider(
+        names_from = all_of(group),
+        values_from = N.est,
+        values_fn = ~ sum(.x, na.rm=TRUE))
+    out.wide <- replace(out.wide, is.na(out.wide), 0)
+    inds <- match(p.param.estimates[group][,1], names(out.wide))
+    out.wide <- out.wide[ , c(1:(min(inds)-1), inds)]
+    return(out.wide)
   }
-  restof.data$trapnights <- trap.nights
-  
-  n.species <- dim(sp.caps)[2]
-  p.estimates <- p.estimates[match(names(sp.caps), p.estimates[,group] ),] ###########################
-  p <- p.estimates$mean  
-  p.effmat <- matrix(NA, nrow=dim(sp.caps)[1], ncol=dim(sp.caps)[2])
-  for(i in 1:n.species){
-    for(t in 1:dim(p.effmat)[1]){
-      p.effmat[t, i] <- 1 - (1 - p[i])^num.captures$n.sec.occ[t]
-    }
+  if(wide.or.long == "long"){
+    return(data)
   }
   
-  N.estmat <- sp.caps / p.effmat / (restof.data$trapnights / restof.data$n.sec.occ / 100)
-  Nestdf <- data.frame(restof.data, N.estmat, check.names = FALSE)
-  
-  
-  return(Nestdf)
 }
 

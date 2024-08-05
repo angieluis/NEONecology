@@ -163,34 +163,34 @@ smammal.sitehabitat.data <- smammal.plot.data %>%
 ###############################################################################
 
 # remove those without tag numbers
-reduced.smammal.captures <- smammal.captures %>%
+smammal.captures.clean <- smammal.captures %>%
   filter(!is.na(tagID))
 
+# add genus and species columns to help with grouping for estimation
+smammal.captures.clean$genus <- str_split_i(smammal.captures.clean$scientificName," ",1)
+smammal.captures.clean$species <- paste(smammal.captures.clean$genus , 
+                                        str_split_i(smammal.captures.clean$scientificName," ",2))
 
 # remove some 'species' that aren't helpful
-sp.rm <- c("DIVI", # opossum 6 captures
+sp.rm <- c("CRSP", # crecitidae
+           "DIVI", # opossum 6 captures
            "LEAM", # rabbit 5 captures
            "HESP", # Heteromyidae family
+           "MRSP", # Muridae family
            "OTHE", # Mammalia
            "ROSP", # Rodentia
            "SRSP" # Soricidae
 )
-reduced.smammal.captures <- reduced.smammal.captures %>%
+smammal.captures.clean <- smammal.captures.clean %>%
   filter( !taxonID %in% sp.rm ) 
 
 # collapse a couple subspecies to species
-reduced.smammal.captures$taxonID[which(reduced.smammal.captures$taxonID=="SIHE")] <-"SIHI"
-reduced.smammal.captures$taxonID[which(reduced.smammal.captures$taxonID=="ICTM")] <-"ICTR"
+smammal.captures.clean$species[which(smammal.captures.clean$taxonID=="SIHE")] <-"Sigmodon hispidus"
+smammal.captures.clean$taxonID[which(smammal.captures.clean$taxonID=="SIHE")] <-"SIHI"
+smammal.captures.clean$species[which(smammal.captures.clean$taxonID=="ICTM")] <-"Ictidomys tridecemlineatus"
+smammal.captures.clean$taxonID[which(smammal.captures.clean$taxonID=="ICTM")] <-"ICTR"
 
 
-# there are 1982 "PELAPEMA" P. leu and P. man
-# a lot more Sorex were just ID to genus that to species, so only estimate p for genus
-
-
-# add genus and species columns to help with grouping for estimation
-reduced.smammal.captures$genus <- str_split_i(reduced.smammal.captures$scientificName," ",1)
-reduced.smammal.captures$species <- paste(reduced.smammal.captures$genus , 
-                                          str_split_i(reduced.smammal.captures$scientificName," ",2))
 
 
 
@@ -198,9 +198,9 @@ reduced.smammal.captures$species <- paste(reduced.smammal.captures$genus ,
 
 # Are there duplicates of same tag/plot on same date? ------------------- ##
 # Yes, lots:
-cols <- names(reduced.smammal.captures)
+cols <- names(smammal.captures.clean)
 cols <- cols[-match(c("collectDate", "tagID", "plotID"),cols)]
-dupes.date <- reduced.smammal.captures %>%
+dupes.date <- smammal.captures.clean %>%
   group_by(collectDate, tagID, plotID) %>%
   summarise(n = n(),
             across(all_of(cols), 
@@ -214,7 +214,7 @@ as.data.frame(dupes.date[which(dupes.date$n_taxonID==2),])
 #28 rows where same tag number on same date in same plot is 2 different species
 
 as.data.frame(
-  reduced.smammal.captures %>%
+  smammal.captures.clean %>%
   filter(collectDate==ymd("2014-07-25") & tagID == "NEON.MAM.D01.R0433" &  plotID=="HARV_001")
 )
 # same tag number: male PEMA and female PELE,  same plot and date. Ugh.
@@ -223,7 +223,7 @@ as.data.frame(
 
 # Is the same tag IDed as different species or sexes? ------------------- ##
 # Yes, lots:
-dupes.taxsex <- reduced.smammal.captures %>%
+dupes.taxsex <- smammal.captures.clean %>%
   group_by(tagID, plotID) %>%
   summarise(across(c(taxonID, sex), 
                    ~ length(unique(.x)), .names = "n_{.col}")) %>%
@@ -240,7 +240,7 @@ length(which(dupes.taxsex$n_taxonID>1))
 # but here I will consider them separate.)
 # right now I don't care about sex, so will leave those to deal with later.
 
-reduced.smammal.captures <- reduced.smammal.captures %>%
+smammal.captures.clean <- smammal.captures.clean %>%
   mutate(plot_taxon_tag = paste(plotID, taxonID, tagID, sep="_"))
 
 
@@ -250,7 +250,12 @@ trapping.session.info <- NEON.session.function(trapping.info,
                                                int.break=10) #if interval is greater than 10 it's a different session
 
 
-# remove sessions that only have 1 night (won't help with estimation)
+
+################################################################################
+### For capture rate estimation - Remove sessions that only have 1 night ---- ## 
+### (won't help with estimation)
+################################################################################
+
 reduced.trapping.session.info <- left_join(
   trapping.session.info, 
   trapping.session.info %>%
@@ -261,7 +266,7 @@ reduced.trapping.session.info <- left_join(
   select(!keep)
 
 # also remove those from the captures
-reduced.smammal.captures <- reduced.smammal.captures %>%
+reduced.smammal.captures <- smammal.captures.clean %>%
   filter((paste(plotID, collectDate) %in% paste(reduced.trapping.session.info$plotID, 
                                                 reduced.trapping.session.info$collectDate)))
 
@@ -279,7 +284,7 @@ reduced.trapping.session.info <- reduced.trapping.session.info %>%
  filter(plotID %in% reduced.plots)
 
 
-save(smammal.plot.data, smammal.captures, trapping.session.info,
+save(smammal.plot.data, smammal.captures.clean, trapping.session.info,
      reduced.smammal.captures, reduced.trapping.session.info, reduced.plots,
      file="NEONsmammalcapturesClean.RData")
 
