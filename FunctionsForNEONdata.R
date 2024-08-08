@@ -180,30 +180,41 @@ NEON.pRDcapture.history.long.fun <- function(
 ## function to calculate number of captures per any taxa (group) ----------- ##
 # per primary occasion, and trapnights
 
+
 taxa.capture.fun <- function(
-  captures = reduced.smammal.captures, 
-  session.info = reduced.trapping.session.info,
-  group = "species", # "species" or "genus" or other group identified in captures
-  ID.col = "plot_taxon_tag", # individual identifier as character vector, e.g., "tagID"
-  taxa.to.include = NULL, #  if NULL, then use all. Otherwise a vector of 4-letter species codes (or other levels of group) to include
-  wide.or.long = "long"){ # output as wide (with columns for taxa) or long?
+    captures = smammal.captures.clean, 
+    session.info = trapping.session.info,
+    group = "species", # "species" or "genus" or other group identified in captures
+    ID.col = "plot_taxon_tag", # individual identifier as character vector, e.g., "tagID"
+    taxa.to.include = NULL, #  if NULL, then use all. Otherwise a vector of 4-letter species codes (or other levels of group) to include
+    include.hanta = TRUE, # if TRUE then need output to be longdata to see it. 
+    wide.or.long = "long"){ # output as wide (with columns for taxa) or long?
   
   names(captures)[which(names(captures)==ID.col)] <- "ID"
+  names(captures)[which(names(captures)==group)] <- "group.tmp"
   
   if(length(taxa.to.include)==0){
-    taxa.to.include <- sort(as.character(unique(as.data.frame(reduced.smammal.captures)[ , group])))
+    taxa.to.include <- sort(as.character(unique(as.data.frame(captures)[ , "group.tmp"])))
   } 
-  n.taxa <- length(taxa.to.include)
-
+  
   captures$n <- 1
   
   out.data <- left_join(captures, session.info)
   
+  # need to add option for hantadata or other covariates
   out.data <- out.data %>%
-    group_by(siteID, plotID, prim.session, species) %>%
-    count(ID) %>%
-    count(species)
-
+    group_by(siteID, plotID, prim.session, group.tmp) %>% 
+    count(ID) %>% 
+    count(group.tmp) 
+  
+  if(include.hanta == TRUE){
+    hanta.data <- left_join(captures, session.info) %>%
+      group_by(siteID, plotID, prim.session, group.tmp) %>%
+      summarise(hantaPos = length(which(hantaResult=="Positive")),
+                hantaTested = length(which(hantaResult == "Positive" | hantaResult == "Negative")))
+    out.data <- left_join(out.data, hanta.data)
+  }
+  
   prim.ses <- session.info %>%
     group_by(plotID, prim.session) %>%
     summarise(first.date = min(collectDate),
@@ -214,20 +225,24 @@ taxa.capture.fun <- function(
   
   if(wide.or.long == "wide"){
     out.wide <- out.data %>%
-       pivot_wider(
-         names_from = all_of(group),
-         values_from = n,
-         values_fn = ~ sum(.x, na.rm=TRUE))
-    out.wide <- replace(out.wide, is.na(out.wide), 0)
-    out.wide <- out.wide[, c(1:6, order(names(out.wide)[7:dim(out.wide)[2]])+6)]
+      pivot_wider(
+        names_from = group.tmp,
+        values_from = n,
+        values_fn = ~ sum(.x, na.rm=TRUE),
+        values_fill = 0,
+        names_sort = TRUE)
+    
+    #gr <- sort(unique(out.data$group.tmp))
+    #inds <- match(gr, names(out.wide))
+    #out.wide <- out.wide[ , c(1:(min(inds)-1), inds)]
     return(out.wide)
   }
   if(wide.or.long == "long"){
+    names(out.data)[which(names(out.data)=="group.tmp")] <-  group
     return(out.data)
   }
   
 }
-
 
 
 ## Functions to estimate population abundance per primary session ----------- ##
@@ -262,10 +277,11 @@ NEON.N.estimates.fromcaptures.speciesmodel <- function(
       pivot_wider(
         names_from = all_of(group),
         values_from = N.est,
-        values_fn = ~ sum(.x, na.rm=TRUE))
-    out.wide <- replace(out.wide, is.na(out.wide), 0)
-    inds <- match(p.param.estimates[group][,1], names(out.wide))
-    out.wide <- out.wide[ , c(1:(min(inds)-1), inds)]
+        values_fn = ~ sum(.x, na.rm=TRUE),
+        values_fill = 0,
+        names_sort = TRUE)
+    #inds <- match(p.param.estimates[group][,1], names(out.wide))
+    #out.wide <- out.wide[ , c(1:(min(inds)-1), inds)]
     return(out.wide)
   }
   if(wide.or.long == "long"){
@@ -313,10 +329,11 @@ NEON.N.estimates.fromcaptures.MMmodel <- function(
       pivot_wider(
         names_from = all_of(group),
         values_from = N.est,
-        values_fn = ~ sum(.x, na.rm=TRUE))
-    out.wide <- replace(out.wide, is.na(out.wide), 0)
-    inds <- match(p.param.estimates[group][,1], names(out.wide))
-    out.wide <- out.wide[ , c(1:(min(inds)-1), inds)]
+        values_fn = ~ sum(.x, na.rm=TRUE),
+        values_fill = 0,
+        names_sort = TRUE)
+    #inds <- match(p.param.estimates[group][,1], names(out.wide))
+    #out.wide <- out.wide[ , c(1:(min(inds)-1), inds)]
     return(out.wide)
   }
   if(wide.or.long == "long"){

@@ -216,7 +216,8 @@ plot(birdsdiversity_bysite$mean_mean_sp_richness, birdsdiversity_bysite$total_sp
 
 
 #############################################################################
-## Smammals
+## Smammals from DivData
+## Also downloaded raw data below
 #############################################################################
 
 # unit is
@@ -293,27 +294,6 @@ ggplot(dat, aes(x = group, y = total_sp_richness, col=group)) +
 
 
 ##############################################################################
-## Rodent Pathogen Status, hantavirus 
-##############################################################################
-
-# hantavirus data only goes through 2019 or 2020. then they switched to 
-# tick borne diseases
-# if want to match up will need to make sure that things didn't differ a lot
-# over time at these sites
-
-hanta <- loadByProduct("DP1.10064.001", 
-                       token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzI1NiJ9.eyJhdWQiOiJodHRwczovL2RhdGEubmVvbnNjaWVuY2Uub3JnL2FwaS92MC8iLCJzdWIiOiJhbmdlbGEubHVpc0B1bW9udGFuYS5lZHUiLCJzY29wZSI6InJhdGU6cHVibGljIiwiaXNzIjoiaHR0cHM6Ly9kYXRhLm5lb25zY2llbmNlLm9yZy8iLCJleHAiOjE4NzMwMzE4NjksImlhdCI6MTcxNTM1MTg2OSwiZW1haWwiOiJhbmdlbGEubHVpc0B1bW9udGFuYS5lZHUifQ.YLxLG3mCbxvV8RTI2amQFiOum--sxt5q5PgL4UIWaOnsILZTCu1kBRbAkoroYJEs5vNeDOI_6Tgk2913yV7NiA"
-)
-
-names(hanta)
-
-head(hanta$rpt_bloodtesting)
-hanta.bloodtesting <- as.tibble(hanta$rpt_bloodtesting) %>%
-  mutate(collectDate = floor_date(collectDate, unit="days")) %>%
-  mutate_at(vars(siteID, plotID, sampleCondition, testPathogenName, testResult), factor)
-
-
-##############################################################################
 ## Raw data on Smammal trapping - each capture, etc 
 ##############################################################################
 
@@ -335,13 +315,35 @@ save(smammal.capturedata, file="rawSmammalCaptureData.RData")
 
 
 ##############################################################################
+## Rodent Pathogen Status, hantavirus 
+##############################################################################
+
+# hantavirus data only goes through 2019 or 2020. then they switched to 
+# tick borne diseases
+# if want to match up will need to make sure that things didn't differ a lot
+# over time at these sites
+
+hanta <- loadByProduct("DP1.10064.001", 
+                       token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzI1NiJ9.eyJhdWQiOiJodHRwczovL2RhdGEubmVvbnNjaWVuY2Uub3JnL2FwaS92MC8iLCJzdWIiOiJhbmdlbGEubHVpc0B1bW9udGFuYS5lZHUiLCJzY29wZSI6InJhdGU6cHVibGljIiwiaXNzIjoiaHR0cHM6Ly9kYXRhLm5lb25zY2llbmNlLm9yZy8iLCJleHAiOjE4NzMwMzE4NjksImlhdCI6MTcxNTM1MTg2OSwiZW1haWwiOiJhbmdlbGEubHVpc0B1bW9udGFuYS5lZHUifQ.YLxLG3mCbxvV8RTI2amQFiOum--sxt5q5PgL4UIWaOnsILZTCu1kBRbAkoroYJEs5vNeDOI_6Tgk2913yV7NiA"
+)
+
+names(hanta)
+
+head(hanta$rpt_bloodtesting)
+hanta.bloodtesting <- as.tibble(hanta$rpt_bloodtesting) %>%
+  mutate(collectDate = floor_date(collectDate, unit="days")) %>%
+  mutate_at(vars(siteID, plotID, sampleCondition, testPathogenName, testResult), factor)
+
+save(hanta.bloodtesting, file="HantavirusTestResults.RData")
+
+##############################################################################
 ## Productivity
 ## Raw data downloaded using neonUtilities
 ##############################################################################
 
-# prod <- loadByProduct("DP1.10023.001", 
-#                       token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzI1NiJ9.eyJhdWQiOiJodHRwczovL2RhdGEubmVvbnNjaWVuY2Uub3JnL2FwaS92MC8iLCJzdWIiOiJhbmdlbGEubHVpc0B1bW9udGFuYS5lZHUiLCJzY29wZSI6InJhdGU6cHVibGljIiwiaXNzIjoiaHR0cHM6Ly9kYXRhLm5lb25zY2llbmNlLm9yZy8iLCJleHAiOjE4NzMwMzE4NjksImlhdCI6MTcxNTM1MTg2OSwiZW1haWwiOiJhbmdlbGEubHVpc0B1bW9udGFuYS5lZHUifQ.YLxLG3mCbxvV8RTI2amQFiOum--sxt5q5PgL4UIWaOnsILZTCu1kBRbAkoroYJEs5vNeDOI_6Tgk2913yV7NiA"
-# )
+prod <- loadByProduct("DP1.10023.001", 
+                       token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzI1NiJ9.eyJhdWQiOiJodHRwczovL2RhdGEubmVvbnNjaWVuY2Uub3JnL2FwaS92MC8iLCJzdWIiOiJhbmdlbGEubHVpc0B1bW9udGFuYS5lZHUiLCJzY29wZSI6InJhdGU6cHVibGljIiwiaXNzIjoiaHR0cHM6Ly9kYXRhLm5lb25zY2llbmNlLm9yZy8iLCJleHAiOjE4NzMwMzE4NjksImlhdCI6MTcxNTM1MTg2OSwiZW1haWwiOiJhbmdlbGEubHVpc0B1bW9udGFuYS5lZHUifQ.YLxLG3mCbxvV8RTI2amQFiOum--sxt5q5PgL4UIWaOnsILZTCu1kBRbAkoroYJEs5vNeDOI_6Tgk2913yV7NiA"
+)
 
 head(prod$hbp_massdata)
 
@@ -469,7 +471,7 @@ sort(unique(weather$wss_daily_temp$siteID))
 
 ##############################################################################
 # Soil geochem and properties
-# Only done once - intial characterization
+# Only done once - initial characterization
 ##############################################################################
 
 soil <- loadByProduct("DP1.10047.001",
@@ -585,12 +587,19 @@ save(microbial.biomass.raw, file="MicrobialBiomassRaw.RData")
 ## Root biomass and chemistry, Megapit
 ###############################################################################
 
-# not run yet:
+
 root.biomass.raw <- loadByProduct("DP1.10066.001", 
                                        token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzI1NiJ9.eyJhdWQiOiJodHRwczovL2RhdGEubmVvbnNjaWVuY2Uub3JnL2FwaS92MC8iLCJzdWIiOiJhbmdlbGEubHVpc0B1bW9udGFuYS5lZHUiLCJzY29wZSI6InJhdGU6cHVibGljIiwiaXNzIjoiaHR0cHM6Ly9kYXRhLm5lb25zY2llbmNlLm9yZy8iLCJleHAiOjE4NzMwMzE4NjksImlhdCI6MTcxNTM1MTg2OSwiZW1haWwiOiJhbmdlbGEubHVpc0B1bW9udGFuYS5lZHUifQ.YLxLG3mCbxvV8RTI2amQFiOum--sxt5q5PgL4UIWaOnsILZTCu1kBRbAkoroYJEs5vNeDOI_6Tgk2913yV7NiA"
 )
 
 save(root.biomass.raw, file="RootBiomassRaw.Rdata")
+
+write_csv(root.biomass.raw$mpr_perrootsample, file="RootBiomass_perRootSample.csv")
+write_csv(root.biomass.raw$mpr_perdepthincrement, file= "RootBiomass_perDepth.csv")
+write_csv(root.biomass.raw$mpr_perpitprofile, file="RootBiomass_perPitProfile.csv")
+write_csv(root.biomass.raw$mpr_carbonNitrogen, file="RootBiomass_CarbonNitrogen.csv")
+
+
 
 ###############################################################################
 # Save basic data for further Analyses

@@ -256,6 +256,49 @@ summary(dat)
 hist(dat$trapnights, breaks=30)
 hist(dat$trapnights[which(dat$trapnights<100)], breaks=30)
 
+
+### Add hantavirus data ----------------------------------------------------- ##
+
+load("HantavirusTestResults.RData")
+
+summary(hanta.bloodtesting$bloodSampleID %in% smammal.captures.clean$bloodSampleID)
+#    Mode   FALSE    TRUE 
+# logical       3   15855 
+
+
+length(unique(hanta.bloodtesting$bloodSampleID[which(!is.na(hanta.bloodtesting$testResult))]))
+#[1] 14002
+dim(hanta.bloodtesting[which(!is.na(hanta.bloodtesting$testResult)),])
+# 14044    24
+# 42 samples have multiple results (that aren't NA). Are they always the same? pos/neg?
+dat <- hanta.bloodtesting %>%
+  filter(!is.na(testResult)) %>%
+  group_by(bloodSampleID) %>%
+  summarise(n = n(),
+            n_dates = length(unique(collectDate)),
+            n_plots = length(unique(plotID)),
+            n_sites = length(unique(siteID)),
+            n_results = length(unique(testResult)),
+            test = factor(str_flatten(sort(testResult), collapse = " "))) %>%
+  filter(n>1)
+summary(dat)
+dat$bloodSampleID[which(dat$n>1)]
+# all of them are negative both times.
+# remove duplicates then merge with capture data
+dat <- hanta.bloodtesting %>%
+  filter(!is.na(testResult)) %>%
+  mutate(hantaResult = testResult) %>%
+  select(siteID, plotID, collectDate, bloodSampleID, hantaResult) 
+dat <- distinct(dat)
+smammal.captures.clean <- left_join(smammal.captures.clean, dat)
+
+hanta.species.summary <- smammal.captures.clean %>%
+  filter(!is.na(hantaResult)) %>%
+  group_by(species) %>%
+  summarise(n_pos = length(which(hantaResult=="Positive")),
+            n_test = length(which(!is.na(hantaResult))),
+            n_prev = n_pos/n_test)
+
 ################################################################################
 ### For capture rate estimation - Remove sessions that only have 1 night ---- ## 
 ### (won't help with estimation)

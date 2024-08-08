@@ -286,4 +286,4 @@ ggplot(smammal.species.estimates.longdata, aes(x=n_caps, y=N.est, col=trapnights
 
        
 
-save(smammal.species.estimates.longdata, )
+save(smammal.species.estimates.longdata, file="SmammalSpeciesEstimates.RData")
