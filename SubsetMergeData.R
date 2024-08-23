@@ -12,7 +12,19 @@ load("BasicNEONdata.RData")
 library(tidyverse)
 
 
+# We want to subset the data peak greenness. The periodic soil sampling
+# has a variable called "sampleTiming" for which one category is "peakGrennness"
+# none of the other datasets have this. Get the date range they called 
+# "peakGreenness" for each site.
 
+site.habitat.peakGreenness <- soil_periodic$sls_soilCoreCollection %>%
+  mutate(MonthDay = format(as.Date(collectDate), "%m-%d")) %>%
+  group_by(siteID, nlcdClass) %>%
+  summarise(first.date = min(MonthDay), 
+            last.date = max(MonthDay))
+
+# This is not helpful. For some sites very wide. (mid-April through November)
+write_csv(site.habitat.peakGreenness, file="SitePeakGreennessDates.csv")
 
 
 ###############################################################################
@@ -85,15 +97,12 @@ summary(productivity)
 # Reduced Data ---------------------------------------------------------------#
 # removing nlcdClass==cultivatedCrops; pastureHay, emergentHerbaceousWetlands,
 # woodyWetlands
-# only using 2019 onwards
-# only using data from peak growing season of June, July, August -------------#
+# only using 2019 onwards  ---------------------------------------------------#
 
 productivity <- productivity %>%
   filter(nlcdClass != "cultivatedCrops" & nlcdClass !="pastureHay" & 
            nlcdClass !="emergentHerbaceousWetlands" & nlcdClass !="woodyWetlands",
-         year(collectDate)>2018, 
-         month(collectDate)==6 | month(collectDate)==7 | month(collectDate)==8 ) 
-# now only a fourth of the original dataset
+         year(collectDate)>2018) 
 
 
 productivity[productivity$clipArea!=0.2,]
@@ -102,7 +111,50 @@ productivity[productivity$clipArea!=0.2,]
 productivity <- productivity %>%
   filter(clipArea == 0.2)
 
-# now 19655 rows of data
+# now 25653 rows of data
+
+
+
+
+
+#### Need to subset to peak growing season -----------------------------------#
+# Base peak growing season on when highest biomass was recorded per site-habitat.
+# Use summed dryMass over different categories (e.g.,Cool Season Graminoids vs
+# Bryophyte) per sampleID (after averaging over duplicates).
+# Data is now per sampleID
+# adding column for the date peak biomass was recorded and if the row's date
+# is within 1 month of the peak date
+
+productivity.persample <-  productivity %>%
+  # first group by subsampleID and take mean (because sometimes weighed twice for qa)
+  group_by(siteID, nlcdClass, collectDate, year=year(collectDate), plotID, 
+           sampleID, subsampleID, subplotID, plotType, plotSize, plotManagement, clipArea, 
+           exclosure, elevation, slopeAspect, slopeGradient) %>%
+  summarise(sub.dryMass = mean(dryMass)) %>%
+  # then group by sampleID to get summed biomass for a sample
+  group_by(siteID, nlcdClass, collectDate, year=year(collectDate), plotID, 
+           sampleID, subplotID, plotType, plotSize, plotManagement, clipArea, 
+           exclosure, elevation, slopeAspect, slopeGradient) %>%
+  summarise(sum.dryMass = sum(sub.dryMass)) %>%
+  # calculate the date that had the highest biomass for the site-habitat
+  group_by(siteID, nlcdClass) %>%
+  mutate(peak.date = collectDate[which(sum.dryMass==max(sum.dryMass))][1]) %>%
+  ungroup() %>%
+  mutate(peak.date = ymd(paste(year, 
+                               format(as.Date(peak.date), "%m-%d"), 
+                               sep="-")),
+         peak.window = factor(if_else(abs(difftime(ymd(collectDate), peak.date, units="days"))<32 , "Y", "N")))
+# if within 31 days of peak time then "Y" for peak.window
+
+summary(productivity.persample$peak.window)
+# N    Y 
+# 1437 3921  
+# removes about a quarter of the data
+
+productivity.persample <- productivity.persample %>%
+  filter(peak.window=="Y")
+
+
 
 
 ###############################################################################
@@ -113,16 +165,13 @@ productivity <- productivity %>%
 # Reduced Data ---------------------------------------------------------------#
 # removing nlcdClass==cultivatedCrops; pastureHay, emergentHerbaceousWetlands,
 # woodyWetlands
-# only using 2019 onwards
-# only using data from peak growing season of June, July, August -------------#
+# only using 2019 onwards ----------------------------------------------------#
 
 plant.cover <- plantsDD %>%
   filter(nlcdClass != "cultivatedCrops" & nlcdClass !="pastureHay" & 
            nlcdClass !="emergentHerbaceousWetlands" & nlcdClass !="woodyWetlands",
-         year(observation_datetime)>2018, 
-         month(observation_datetime)==6 | month(observation_datetime)==7 | 
-           month(observation_datetime)==8 ) 
-# now only a fourth of the original dataset
+         year(observation_datetime)>2018) 
+
 
 plant.cover <- plant.cover %>%
   mutate(observation_datetime=floor_date(observation_datetime, unit="days")) %>%
@@ -145,6 +194,39 @@ reduced.plant.cover <- plant.cover %>%
   mutate(plot_year = paste(plotID, year(observation_datetime),sep=" ")) %>%
   filter( (plot_year %in% rm.plot.yr$plot_year) == FALSE)
 
+
+# Subset to peak growing season based on productivity data ------------------#
+
+# add peak dates
+
+# pull out the peak.date for each site-habitat
+
+dat <- productivity.persample %>%
+  group_by(siteID, nlcdClass) %>%
+  summarise(peakdate = unique(format(as.Date(peak.date), "%m-%d")))
+
+reduced.plant.cover <- left_join(reduced.plant.cover %>%
+                                   mutate(year = year(observation_datetime))
+                                 , dat) %>%
+  mutate(peak.date = mdy(paste(peakdate, year, sep="-")),
+    peak.window = factor(if_else(abs(difftime(ymd(observation_datetime), 
+                                                   peak.date, units="days"))<32 , "Y", "N")))
+
+
+summary(reduced.plant.cover$peak.window)
+#      N      Y   NA's 
+# 156047 185975  18754 
+
+# which site-habitats were missing from the peak productivity data? 
+sort(unique(paste(reduced.plant.cover$siteID[which(is.na(reduced.plant.cover$peak.window))],
+             reduced.plant.cover$nlcdClass[which(is.na(reduced.plant.cover$peak.window))])))
+# 12 site-habitats have no productivity data
+# These match up to what I had calculated before as having no productivity plots
+
+# How many additional site-habitats will be missing if we reduce to within the peak window?
+sort(unique(paste(reduced.plant.cover$siteID[which(reduced.plant.cover$peak.window=="N")],
+                  reduced.plant.cover$nlcdClass[which(reduced.plant.cover$peak.window=="N")])))
+## Lots!!! 68 additional site-habitats will be removed!
 
 
 
@@ -261,7 +343,8 @@ dim(soil.periodic.merge)
 length(which(!is.na(soil.periodic.merge$geneticSampleID)))
 # 7330 genetic samples
 
-
+length(which(!is.na(soil.periodic.merge$biomassID)))
+#  6374 microbial biomass samples
 
 ## See "ExploringSampling.Rmd" to look at how sampling align between soils,
 # plant cover, productivity
@@ -274,7 +357,7 @@ length(which(!is.na(soil.periodic.merge$geneticSampleID)))
 
  
 ###############################################################################
-# Microbial Sampling
+# Microbial Sequencing Sampling
 ###############################################################################
 
 # a lot of these are provisional and should probably be re-downloaded with 
@@ -299,7 +382,7 @@ dim(distinct(microbial$mmg_soilMarkerGeneSequencing_ITS[,-1]))
 #[1] 15711    40
 
 
-microbe.ITS <- as.tibble(distinct(microbial$mmg_soilMarkerGeneSequencing_ITS[,-1])) %>% # remove duplicated rows before proceeding
+microbe.ITS <- as_tibble(distinct(microbial$mmg_soilMarkerGeneSequencing_ITS[,-1])) %>% # remove duplicated rows before proceeding
   mutate(collectDate=floor_date(collectDate, unit="days"),
          geneticSampleID= unlist(lapply(as.list(dnaSampleID), 
                                  function(x){paste(str_split_1(x,pattern="-GEN")[1], 
@@ -312,7 +395,8 @@ microbe.ITS <- as.tibble(distinct(microbial$mmg_soilMarkerGeneSequencing_ITS[,-1
   select(c("siteID", "plotID", "geneticSampleID", "collectDate", "processedDate", "dnaSampleID",
          "linkerPrimerSequence",	"reverseLinkerPrimerSequence", "illuminaIndex1",	
          "illuminaIndex2", "sampleTotalReadNumber",	"sampleFilteredReadNumber",	
-         "minFilteredReadLength",	"maxFilteredReadLength", "qaqcStatus", "publicationDate",	"release"))
+         "minFilteredReadLength",	"maxFilteredReadLength", "sequencerRunID",  
+         "qaqcStatus", "publicationDate",	"release"))
 # Ylva wanted FilteredReadLength, but they are all NA for our date range
 
 # check that my version of geneticSampleID looks ok
@@ -350,7 +434,6 @@ soil.periodic.merge <- left_join(soil.periodic.merge,
                                    select(geneticSampleID, qaqcStatus))
 names(soil.periodic.merge)[which(names(soil.periodic.merge)=="qaqcStatus")] <- "ITS.qaqcStatus"
 soil.periodic.merge$ITS.sequence = factor(ifelse(is.na(soil.periodic.merge$ITS.qaqcStatus), "N", "Y"))
-soil.periodic.merge <- soil.periodic.merge[,c(1:42, 44, 43)]
 
 
 ### Remove crops, pasture, wetlands -----------------------------------------#
@@ -366,6 +449,34 @@ microbe.ITS.metadata <- microbe.ITS.metadata %>%
 ### Still haven't filtered Time of year -------------------------#
 
 
+###############################################################################
+# Microbial Biomass Sampling
+###############################################################################
+
+load("MicrobialBiomassRaw.RData")
+
+names(microbial.biomass.raw)
+names(microbial.biomass.raw$sme_microbialBiomass)
+names(microbial.biomass.raw$sme_scaledMicrobialBiomass)
+
+unscaledIDs <- unique(microbial.biomass.raw$sme_microbialBiomass$biomassID)
+scaledIDs <- unique(microbial.biomass.raw$sme_scaledMicrobialBiomass$biomassID)
+#biomassID is just sampleID with "-BM" on end
+
+summary(unscaledIDs %in% scaledIDs)
+summary(scaledIDs %in% unscaledIDs )
+# quite a few don't overlap
+
+summary(scaledIDs %in% soil.periodic.merge$biomassID)
+#    Mode   FALSE    TRUE 
+# logical     715    6347 
+summary(unscaledIDs %in% soil.periodic.merge$biomassID)
+#    Mode   FALSE    TRUE 
+# logical    1828    4021 
+
+microbial.biomass.scaled <- 
+  microbial.biomass.raw$sme_scaledMicrobialBiomass$biomassID %>%
+  filter()
 ###############################################################################
 # Initial Soil Characterization
 ###############################################################################
@@ -589,6 +700,63 @@ for(r in 1:dim(dat)[1]){
 }
 summary(microbe.ITS.metadata.initial.soils)
 
+
+
+
+###############################################################################
+# Root biomass
+###############################################################################
+
+# depthIncrementID (from perDepth and perRoot) seems to match the first part of cnSampleID (CN)
+# both start with pitProfileID (from perdepth and perpit)
+# and cnSampleID from CN seems to match sampleID from perRootSample
+# namedLocation from CN seems to match pitNamedLocation from all other files - change name
+
+root.CN <- root.biomass.raw$mpr_carbonNitrogen %>%
+  select("namedLocation","siteID", "collectDate", "cnSampleID", "sampleType", 
+  "d15N",	"d13C",	"nitrogenPercent",	"carbonPercent",	"CNratio", "analyticalRepNumber") %>%
+  mutate(pitProfileID = unlist(lapply(str_split(cnSampleID, "[.]",3), 
+                                      function(y){paste(y[1],y[2],sep=".")}))) %>%
+  rename(pitNamedLocation = namedLocation,
+         sampleID =cnSampleID)
+ 
+
+root.depth <- root.biomass.raw$mpr_perdepthincrement %>%
+  select("pitNamedLocation","pitProfileID",	"depthIncrementID",	"topDepth",	
+         "bottomDepth",	"depthIncrementVolume")  
+
+
+root.pit <- root.biomass.raw$mpr_perpitprofile %>%
+  select("pitNamedLocation", "siteID",	"decimalLatitude",	"decimalLongitude", 
+         "elevation", "nlcdClass",   "pitID",	"pitProfileID",	"rootStatus",	
+         "sizeCategory",	"maxProfileDepth",	"totalRootBiomass",	"depth100RootBiomass") %>%
+  mutate(across(c(nlcdClass, rootStatus, sizeCategory), factor))
+
+root.perroot <- root.biomass.raw$mpr_perrootsample %>%
+  select("pitNamedLocation", "depthIncrementID",	"sampleID", "rootStatus",	
+         "sizeCategory",	"rootDryMass", "incrementRootBiomass",	"incrementRootDensity") %>%
+  mutate(pitProfileID = unlist(lapply(str_split(sampleID, "[.]",3), 
+                                      function(y){paste(y[1],y[2],sep=".")}))) %>%
+  mutate(across(c(rootStatus, sizeCategory), factor))
+
+root_merge <- full_join(root.depth, root.perroot)
+root_merge <- full_join(root_merge, root.CN)
+root_merge <- full_join(root_merge, root.pit)
+
+summary(root_merge)
+
+root.site.habitat.summary <- root_merge %>%
+  group_by(siteID, nlcdClass) %>%
+  summarise(n_pits = length(unique(pitNamedLocation)),
+            n_CN_samples = length(unique(sampleID[!is.na(CNratio)])),
+            n_rootDryMass_samples = length(unique(sampleID[!is.na(rootDryMass)])))
+
+# looks like one pit per site (not site-habitat)
+# but there are some NAs. need to look at them... 
+
+root_merge[which(is.na(root_merge$nlcdClass)),]
+
+write_csv(root.site.habitat.summary, file="RootSampling.csv")
 
 ###############################################################################
  
