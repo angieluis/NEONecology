@@ -581,6 +581,9 @@ summary(microbial.biomass.raw$sme_scaledMicrobialBiomass$sampleID %in%
 #    Mode   FALSE    TRUE 
 # logical    2326    4741 
 
+write_csv(microbial.biomass.raw$sme_microbialBiomass, file="MicrobialBiomass.csv")
+write_csv(microbial.biomass.raw$sme_scaledMicrobialBiomass, file="ScaledMicrobialBiomass.csv")
+
 save(microbial.biomass.raw, file="MicrobialBiomassRaw.RData")
 
 ###############################################################################

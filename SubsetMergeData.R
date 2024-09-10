@@ -123,7 +123,7 @@ productivity <- productivity %>%
 # Bryophyte) per sampleID (after averaging over duplicates).
 # Data is now per sampleID
 # adding column for the date peak biomass was recorded and if the row's date
-# is within 1 month of the peak date
+# is within x month(s) of the peak date
 
 productivity.persample <-  productivity %>%
   # first group by subsampleID and take mean (because sometimes weighed twice for qa)
@@ -143,16 +143,25 @@ productivity.persample <-  productivity %>%
   mutate(peak.date = ymd(paste(year, 
                                format(as.Date(peak.date), "%m-%d"), 
                                sep="-")),
-         peak.window = factor(if_else(abs(difftime(ymd(collectDate), peak.date, units="days"))<32 , "Y", "N")))
-# if within 31 days of peak time then "Y" for peak.window
+         peak.window.2mo = factor(if_else(abs(difftime(ymd(collectDate), peak.date, units="days"))<32 , "Y", "N")),
+         # if within 31 days of peak time then "Y" for peak.window.2mo (2 month-window)
+         peak.window.3mo = factor(if_else(abs(difftime(ymd(collectDate), peak.date, units="days"))<46 , "Y", "N")),
+         # 3 month window
+         peak.window.4mo = factor(if_else(abs(difftime(ymd(collectDate), peak.date, units="days"))<62 , "Y", "N")))
+         # 4 month window
 
-summary(productivity.persample$peak.window)
-# N    Y 
+summary(productivity.persample$peak.window.2mo)
+#    N    Y 
 # 1437 3921  
 # removes about a quarter of the data
+summary(productivity.persample$peak.window.3mo)
+#    N    Y 
+# 1437 3921  
+summary(productivity.persample$peak.window.4mo)
+#   N    Y 
+# 720 4638 
 
-productivity.persample <- productivity.persample %>%
-  filter(peak.window=="Y")
+
 
 
 
@@ -201,36 +210,48 @@ reduced.plant.cover <- plant.cover %>%
 
 # pull out the peak.date for each site-habitat
 
-dat <- productivity.persample %>%
+site.habitat.peakDate <- productivity.persample %>%
   group_by(siteID, nlcdClass) %>%
   summarise(peakdate = unique(format(as.Date(peak.date), "%m-%d")))
+# for a given site, the dates between habitats are similar. 
+# So to fill in the missing ones take the mean of the other habitats at that site
+site.peakDate <- site.habitat.peakDate %>%
+  group_by(siteID) %>%
+  summarise(site.peakdate = format(mean(mdy(paste(peakdate, 2019, sep="-") )), "%m-%d")) 
 
-reduced.plant.cover <- left_join(reduced.plant.cover %>%
+
+
+
+
+reduced.plant.cover <- left_join(left_join(reduced.plant.cover %>%
                                    mutate(year = year(observation_datetime))
-                                 , dat) %>%
-  mutate(peak.date = mdy(paste(peakdate, year, sep="-")),
-    peak.window = factor(if_else(abs(difftime(ymd(observation_datetime), 
-                                                   peak.date, units="days"))<32 , "Y", "N")))
+                                 , site.habitat.peakDate),
+                                 site.peakDate) %>%
+  mutate(peak.date = mdy(paste(if_else(is.na(peakdate), site.peakdate, peakdate), year, sep="-")), #if it's present, use the site-habitat peak date, otherwise use the site peak date
+    # is this within 1 month on either side of peak date (so 2 month window?)
+    peak.window.2mo = factor(if_else(abs(difftime(ymd(observation_datetime), 
+                                                   peak.date, units="days"))<32 , "Y", "N")),
+    # is this within 1.5 month on either side of peak date (so 3 month window?)
+    peak.window.3mo = factor(if_else(abs(difftime(ymd(observation_datetime), 
+                                                  peak.date, units="days"))<46 , "Y", "N")),
+    peak.window.4mo = factor(if_else(abs(difftime(ymd(observation_datetime), 
+                                                  peak.date, units="days"))<62 , "Y", "N")))
 
 
-summary(reduced.plant.cover$peak.window)
-#      N      Y   NA's 
-# 156047 185975  18754 
 
-# which site-habitats were missing from the peak productivity data? 
-sort(unique(paste(reduced.plant.cover$siteID[which(is.na(reduced.plant.cover$peak.window))],
-             reduced.plant.cover$nlcdClass[which(is.na(reduced.plant.cover$peak.window))])))
-# 12 site-habitats have no productivity data
-# These match up to what I had calculated before as having no productivity plots
+summary(reduced.plant.cover$peak.window.2mo)
+#      N      Y 
+# 164558 196218 
 
 # How many additional site-habitats will be missing if we reduce to within the peak window?
-sort(unique(paste(reduced.plant.cover$siteID[which(reduced.plant.cover$peak.window=="N")],
-                  reduced.plant.cover$nlcdClass[which(reduced.plant.cover$peak.window=="N")])))
-## Lots!!! 68 additional site-habitats will be removed!
+sort(unique(paste(reduced.plant.cover$siteID[which(reduced.plant.cover$peak.window.2mo=="N")],
+                  reduced.plant.cover$nlcdClass[which(reduced.plant.cover$peak.window.2mo=="N")])))
+## Lots!!! 79 site-habitats will be removed!
+# if increase the window to 3 months total, still 61 site-habitats removed.
+# if 4 month window, 33 site-habitats removed
 
 
-
-# 
+ 
 # ### How do plots line up between datasets ------------------------------------#
 # cover.site.info <- plant.cover %>%
 #   group_by(siteID) %>%
@@ -327,14 +348,7 @@ soil.periodic.merge <- full_join(soil.periodic.merge, soil.pH)
 summary(soil.periodic.merge)
 
 # Still haven't subset to make easier to match up to microbes, etc ----------#
-# Need to do at some point!
-# Could subset to peakGreenness (instead of by month 6|7|8) -----------------#
-# soil.periodic.merge <- soil.periodic.merge %>%
-#   filter(sampleTiming=="peakGreenness")
-# summary(month(soil.periodic.merge$collectDate))
-# month still goes from 1 to 11 - not sure how that's peak greenness
-# so may want to subset by month to be consistent?
-# Sill haven't subset to nlcdClass ------------------------------------------#
+# or nlcdClass or date. Do that below after merging -------------------------#
 
 
 
@@ -446,7 +460,71 @@ microbe.ITS.metadata <- microbe.ITS.metadata %>%
            nlcdClass !="emergentHerbaceousWetlands" & nlcdClass !="woodyWetlands")
 
   
-### Still haven't filtered Time of year -------------------------#
+### Indicate peak biomass date windows for later subsetting -----------------#
+
+
+soil.periodic.merge <- left_join(left_join(soil.periodic.merge %>%
+                                   mutate(year = year(collectDate))
+                                 , site.habitat.peakDate),
+                                  site.peakDate) %>%
+  mutate(peak.date = mdy(paste(if_else(is.na(peakdate), site.peakdate, peakdate), year, sep="-")),
+         peak.window.2mo = factor(if_else(abs(difftime(ymd(collectDate), 
+                                                   peak.date, units="days"))<32 , "Y", "N")),
+         peak.window.3mo = factor(if_else(abs(difftime(ymd(collectDate), 
+                                                       peak.date, units="days"))<46 , "Y", "N")),
+         peak.window.4mo = factor(if_else(abs(difftime(ymd(collectDate), 
+                                                       peak.date, units="days"))<62 , "Y", "N")))
+summary(soil.periodic.merge$peak.window.2mo)
+# N     Y 
+# 11923  4097
+summary(soil.periodic.merge$peak.window.3mo)
+# N     Y 
+# 10337  5683 
+summary(soil.periodic.merge$peak.window.4mo)
+# N    Y 
+# 8803 7217 
+
+# How many site-habitats will be missing if we reduce to within the peak window?
+sort(unique(paste(soil.periodic.merge$siteID[which(soil.periodic.merge$peak.window.2mo=="N")],
+                  soil.periodic.merge$nlcdClass[which(soil.periodic.merge$peak.window.2mo=="N")])))
+##  87 site-habitats will be removed!
+# if increase the window to 3 months total, still 79 site-habitats removed.
+# 78 with 4 month window
+
+
+
+
+microbe.ITS.metadata <- left_join(microbe.ITS.metadata %>%
+                                   mutate(year = year(collectDate))
+                                 , site.habitat.peakDate) %>%
+  mutate(peak.date = mdy(paste(peakdate, year, sep="-")),
+         peak.window.2mo = factor(if_else(abs(difftime(ymd(collectDate), 
+                                                       peak.date, units="days"))<32 , "Y", "N")),
+         peak.window.3mo = factor(if_else(abs(difftime(ymd(collectDate), 
+                                                       peak.date, units="days"))<46 , "Y", "N")),
+         peak.window.4mo = factor(if_else(abs(difftime(ymd(collectDate), 
+                                                       peak.date, units="days"))<62 , "Y", "N")))
+summary(microbe.ITS.metadata$peak.window.2mo)
+# removes 3/4 of data
+
+# How many additional site-habitats will be missing if we reduce to within the peak window?
+sort(unique(paste(microbe.ITS.metadata$siteID[which(microbe.ITS.metadata$peak.window.2mo=="N")],
+                  microbe.ITS.metadata$nlcdClass[which(microbe.ITS.metadata$peak.window.2mo=="N")])))
+# removes 66 site-habitats
+# 4-month window removes 49 site-habitats
+
+# Within the 4-month window, we only want 1 ITS sample per site-habitat per year 
+# (so don't have to worry about averaging etc)
+# Which site-habitats have more than 1 per year? For those, choose the one that is closest to 
+# the plant sampling
+
+ITS.site.hab.year.samples <- microbe.ITS.metadata %>%
+  filter(peak.window.4mo == "Y") %>%
+  group_by(siteID, nlcdClass, year) %>%
+  summarise(n.dates = length(unique(collectDate)),
+            n.plots = length(unique(plotID)))
+
+
 
 
 ###############################################################################
@@ -469,14 +547,38 @@ summary(scaledIDs %in% unscaledIDs )
 
 summary(scaledIDs %in% soil.periodic.merge$biomassID)
 #    Mode   FALSE    TRUE 
-# logical     715    6347 
+# logical     715    6347   
 summary(unscaledIDs %in% soil.periodic.merge$biomassID)
 #    Mode   FALSE    TRUE 
 # logical    1828    4021 
 
-microbial.biomass.scaled <- 
-  microbial.biomass.raw$sme_scaledMicrobialBiomass$biomassID %>%
-  filter()
+
+dim(microbial.biomass.raw$sme_scaledMicrobialBiomass)
+length(scaledIDs)
+# 5 samples were run twice - need to take mean or first value (they're very similar)
+ls <- unlist(lapply(as.list(microbial.biomass.raw$sme_scaledMicrobialBiomass$biomassID), 
+                    function(x){length(which(microbial.biomass.raw$sme_scaledMicrobialBiomass$biomassID==x))}))
+summary(factor(ls))
+microbial.biomass.raw$sme_scaledMicrobialBiomass$biomassID[which(ls==2)]
+
+cols <- names(microbial.biomass.raw$sme_scaledMicrobialBiomass)[c(13,24:84,86)]
+microbial.biomass.scaled <- microbial.biomass.raw$sme_scaledMicrobialBiomass %>%
+  mutate_at(vars(domainID, siteID, plotID), factor) %>%
+  filter(year(collectDate)>2018) %>% 
+  # nlcdClass isn't in this dataset - it will remove the extraneous ones when I merge with periodic soil data
+  #filter(nlcdClass != "cultivatedCrops" & nlcdClass !="pastureHay" & 
+  #      nlcdClass !="emergentHerbaceousWetlands" & nlcdClass !="woodyWetlands")
+  group_by(siteID, plotID, sampleID, biomassID) %>%
+  summarise(across(all_of(cols), ~ mean(.x, na.rm=TRUE)))
+summary(microbial.biomass.scaled)
+summary(unique(microbial.biomass.scaled$biomassID) %in% soil.periodic.merge$biomassID)
+# totalLipidScaledConcentration
+
+soil.periodic.merge <- left_join(soil.periodic.merge, microbial.biomass.scaled)
+  
+
+
+
 ###############################################################################
 # Initial Soil Characterization
 ###############################################################################
@@ -760,12 +862,12 @@ write_csv(root.site.habitat.summary, file="RootSampling.csv")
 
 ###############################################################################
  
-save(plant.cover, reduced.plant.cover, productivity, soil.periodic.merge, 
-     soil.initial, microbe.ITS.metadata,
+save(plant.cover, reduced.plant.cover, productivity, productivity.persample,
+     soil.periodic.merge, soil.initial, microbe.ITS.metadata,
      file="ReducedMergedPlantSoilData.RData")
 
 # All datasets have removed nlcdClass crops, pasture, wetlands.
 # All but the soil.initial only include 2019 and onwards.
-# The plant.cover an productivity datasets have been filtered to include
-# only June, July, August
-# the soil.periodic and microbe metadata haven't been filtered by time of year
+
+# not filtered by time of year but has column for peak window (2 months and 3 months)
+# based on plant biomass data
