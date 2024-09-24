@@ -513,10 +513,13 @@ sort(unique(paste(microbe.ITS.metadata$siteID[which(microbe.ITS.metadata$peak.wi
 # removes 66 site-habitats
 # 4-month window removes 49 site-habitats
 
-# Within the 4-month window, we only want 1 ITS sample per site-habitat per year 
+
+# --------------------------------------------------------------------------- #
+# Within the 4-month window, we only want 1 ITS core per site-habitat per year 
 # (so don't have to worry about averaging etc)
 # Which site-habitats have more than 1 per year? For those, choose the one that is closest to 
-# the plant sampling
+# the plant sampling, prioritizing those in the same plot, then those with the 
+# most recent cover data, then most recent productivity data.
 
 ITS.site.hab.year.samples <- microbe.ITS.metadata %>%
   filter(peak.window.4mo == "Y") %>%
@@ -526,6 +529,126 @@ ITS.site.hab.year.samples <- microbe.ITS.metadata %>%
 
 
 
+ITS.site.hab.year.samples$use.plot <- character(length=dim(ITS.site.hab.year.samples)[1])
+ITS.site.hab.year.samples$use.date <- Date(length=dim(ITS.site.hab.year.samples)[1])
+for(i in 1:dim(ITS.site.hab.year.samples)[1]){
+  
+  dat <- microbe.ITS.metadata %>%
+    filter(peak.window.4mo == "Y", siteID == ITS.site.hab.year.samples$siteID[i], 
+           nlcdClass == ITS.site.hab.year.samples$nlcdClass[i], 
+           year == ITS.site.hab.year.samples$year[i])
+  
+  plot.dates <- distinct(dat[,c("plotID","collectDate")])
+  
+  if(dim(plot.dates)[1] ==1 ){ # if there is only 1 plot date, use it
+    ITS.site.hab.year.samples$use.plot[i] <- as.character(plot.dates$plotID[1])
+    ITS.site.hab.year.samples$use.date[i] <- plot.dates$collectDate[1]
+  } else { # if there is more than 1, then figure out which one to use:
+  cover.plotdates <- reduced.plant.cover %>%
+    filter(peak.window.4mo == "Y", siteID == ITS.site.hab.year.samples$siteID[i], 
+           nlcdClass == ITS.site.hab.year.samples$nlcdClass[i], 
+           year == ITS.site.hab.year.samples$year[i]) %>%
+    select(c("plotID","observation_datetime")) %>%
+    distinct()
+  
+  biomass.plotdates <- productivity.persample %>%
+    filter(peak.window.4mo == "Y", siteID == ITS.site.hab.year.samples$siteID[i], 
+           nlcdClass == ITS.site.hab.year.samples$nlcdClass[i], 
+           year == ITS.site.hab.year.samples$year[i]) %>%
+    select(c("plotID","collectDate")) %>%
+    distinct()
+  
+  # for each plot, was it also sampled for cover or productivity?
+  plot.dates$plotin.cover <- plot.dates$plotID %in% unique(cover.plotdates$plotID)
+  plot.dates$plotin.prod <- plot.dates$plotID %in% unique(biomass.plotdates$plotID)
+  
+  both.plot.dates <- plot.dates%>%
+    filter(plotin.cover == T, plotin.prod ==T)
+  
+  if(dim(both.plot.dates)[1]==1){ # if there is only 1 plot that is in both datasets, use that:
+    ITS.site.hab.year.samples$use.plot[i] <- as.character(both.plot.dates$plotID[1])
+    ITS.site.hab.year.samples$use.date[i] <- both.plot.dates$collectDate[1]
+  }
+  if(dim(both.plot.dates)[1] > 1){ # if there is more than 1 plot in both datasets, use the one that is closest in sampling date to plant cover data 
+    both.plot.dates$since.cover <- rep(NA, dim(both.plot.dates)[1])
+    for(j in 1: dim(both.plot.dates)[1]){
+      cd <- cover.plotdates[which(as.character(cover.plotdates$plotID)==as.character(both.plot.dates$plotID[j])),] 
+      both.plot.dates$since.cover[j] <-  min(abs(diff.Date(c(cd$observation_datetime, both.plot.dates$collectDate[j]))))
+    }
+      
+    ITS.site.hab.year.samples$use.plot[i] <- as.character(both.plot.dates$plotID[which.min(both.plot.dates$since.cover)])
+    ITS.site.hab.year.samples$use.date[i] <- both.plot.dates$collectDate[which.min(both.plot.dates$since.cover)]
+  }
+  if(dim(both.plot.dates)[1] == 0){ #if there is not a plot in both datasets, but in 1 of the datasets... 
+    if(length(which(plot.dates$plotin.cover==TRUE))>0){
+      d <- plot.dates[which(plot.dates$plotin.cover==T),]
+      d$since.cover <- rep(NA, dim(d)[1])
+      for(k in 1: dim(d)[1]){
+        cd <- cover.plotdates[which(as.character(cover.plotdates$plotID)==as.character(d$plotID[k])),] 
+        d$since.cover[k] <-  min(abs(diff.Date(c(cd$observation_datetime, d$collectDate[k]))))
+      }
+      ITS.site.hab.year.samples$use.plot[i] <- as.character(d$plotID[which.min(d$since.cover)])
+      ITS.site.hab.year.samples$use.date[i] <- d$collectDate[which.min(d$since.cover)]
+    } else{ 
+      if(length(which(plot.dates$plotin.prod==TRUE))>0){
+        d <- plot.dates[which(plot.dates$plotin.prod==T),]
+        d$since.prod <- rep(NA, dim(d)[1])
+        for(k in 1: dim(d)[1]){
+          bd <- biomass.plotdates[which(as.character(biomass.plotdates$plotID)==as.character(d$plotID[k])),] 
+          d$since.prod[k] <-  min(abs(diff.Date(c(bd$collectDate, d$collectDate[k]))))
+        }
+        ITS.site.hab.year.samples$use.plot[i] <- as.character(d$plotID[which.min(d$since.prod)])
+        ITS.site.hab.year.samples$use.date[i] <- d$collectDate[which.min(d$since.prod)]
+      } else{ # no overlap in plots, so just choose the date that is closest to a cover survey (regardless of plot) 
+      if(dim(cover.plotdates)[1]>0){
+          d <- plot.dates
+          d$since.cover <- rep(NA, dim(d)[1])
+          for(k in 1: dim(d)[1]){
+            dates <- cover.plotdates$observation_datetime
+            d$since.cover[k] <-  min(abs(dates - d$collectDate[k])) # this doesn't work if more than 1 date so need to fix!
+          } 
+        ITS.site.hab.year.samples$use.plot[i] <- as.character(d$plotID[which.min(d$since.cover)])
+        ITS.site.hab.year.samples$use.date[i] <- d$collectDate[which.min(d$since.cover)]
+        
+      } else{# if there is no cover data use biomass date
+        if(dim(biomass.plotdates)[1]>0){
+          d <- plot.dates
+          d$since.prod <- rep(NA, dim(d)[1])
+          for(k in 1: dim(d)[1]){
+            dates <- biomass.plotdates$collectDate
+            d$since.prod[k] <-  min(abs(dates - d$collectDate[k])) # this doesn't work if more than 1 date so need to fix!
+          } 
+          ITS.site.hab.year.samples$use.plot[i] <- as.character(d$plotID[which.min(d$since.prod)])
+          ITS.site.hab.year.samples$use.date[i] <- d$collectDate[which.min(d$since.prod)]
+         } else {
+        ITS.site.hab.year.samples$use.plot[i] <- NA
+        ITS.site.hab.year.samples$use.date[i] <- NA
+        }
+        
+      }
+    } 
+    }
+    
+  }
+  }
+}
+
+# still 3 NAs - a site-habitat-year that had ITS data but no plant data
+
+
+# Pull out ITS sampleIDs for these plot-dates
+
+
+
+# --------------------------------------------------------------------------- #
+
+names(ITS.site.hab.year.samples)[6:7] <- c("plotID", "collectDate")
+x <- full_join(drop_na(ITS.site.hab.year.samples),microbe.ITS.metadata)
+length(which(!is.na(x$n.dates)))
+reduced.microbe.ITS.metadata <- x[which(!is.na(x$n.dates)),-(4:5)]
+# this includes all mineral and organic horizons - not sure if we want that.
+
+write_csv(reduced.microbe.ITS.metadata, "ReducedMicrobeITSmetadata.csv")
 
 ###############################################################################
 # Microbial Biomass Sampling
@@ -860,14 +983,95 @@ root_merge[which(is.na(root_merge$nlcdClass)),]
 
 write_csv(root.site.habitat.summary, file="RootSampling.csv")
 
+
+###############################################################################
+# pull in the neonDivData on beetles and birds and smammals 
+# and add peak productivity windows
+###############################################################################
+
+
+#### Beetles -----------------------------------------------------------------#
+beetlesDD <- neonDivData::data_beetle
+
+beetles <- beetlesDD %>%
+  filter(nlcdClass != "cultivatedCrops" & nlcdClass !="pastureHay" & 
+           nlcdClass !="emergentHerbaceousWetlands" & nlcdClass !="woodyWetlands",
+         year(observation_datetime)>2018) 
+
+beetles <- left_join(left_join(beetles %>%
+                                  mutate(year = year(observation_datetime))
+                                  , site.habitat.peakDate),
+                                 site.peakDate) %>%
+  mutate(peak.date = mdy(paste(if_else(is.na(peakdate), site.peakdate, peakdate), year, sep="-")), #if it's present, use the site-habitat peak date, otherwise use the site peak date
+         # is this within 1 month on either side of peak date (so 2 month window?)
+         peak.window.2mo = factor(if_else(abs(difftime(ymd(observation_datetime), 
+                                                       peak.date, units="days"))<32 , "Y", "N")),
+         # is this within 1.5 month on either side of peak date (so 3 month window?)
+         peak.window.3mo = factor(if_else(abs(difftime(ymd(observation_datetime), 
+                                                       peak.date, units="days"))<46 , "Y", "N")),
+         peak.window.4mo = factor(if_else(abs(difftime(ymd(observation_datetime), 
+                                                       peak.date, units="days"))<62 , "Y", "N")))
+
+
+
+#### Small mammals -----------------------------------------------------------#
+
+smammalsDD <- neonDivData::data_small_mammal
+
+smammals <- smammalsDD %>%
+  filter(nlcdClass != "cultivatedCrops" & nlcdClass !="pastureHay" & 
+           nlcdClass !="emergentHerbaceousWetlands" & nlcdClass !="woodyWetlands",
+         year(observation_datetime)>2018) 
+
+smammals <- left_join(left_join(smammals %>%
+                                 mutate(year = year(observation_datetime))
+                               , site.habitat.peakDate),
+                     site.peakDate) %>%
+  mutate(peak.date = mdy(paste(if_else(is.na(peakdate), site.peakdate, peakdate), year, sep="-")), #if it's present, use the site-habitat peak date, otherwise use the site peak date
+         # is this within 1 month on either side of peak date (so 2 month window?)
+         peak.window.2mo = factor(if_else(abs(difftime(ymd(observation_datetime), 
+                                                       peak.date, units="days"))<32 , "Y", "N")),
+         # is this within 1.5 month on either side of peak date (so 3 month window?)
+         peak.window.3mo = factor(if_else(abs(difftime(ymd(observation_datetime), 
+                                                       peak.date, units="days"))<46 , "Y", "N")),
+         peak.window.4mo = factor(if_else(abs(difftime(ymd(observation_datetime), 
+                                                       peak.date, units="days"))<62 , "Y", "N")))
+
+
+
+#### Birds  -----------------------------------------------------------------#
+birdsDD <- neonDivData::data_bird
+
+birds <- birdsDD %>%
+  filter(nlcdClass != "cultivatedCrops" & nlcdClass !="pastureHay" & 
+           nlcdClass !="emergentHerbaceousWetlands" & nlcdClass !="woodyWetlands",
+         year(observation_datetime)>2018) 
+
+birds <- left_join(left_join(birds %>%
+                                 mutate(year = year(observation_datetime))
+                               , site.habitat.peakDate),
+                     site.peakDate) %>%
+  mutate(peak.date = mdy(paste(if_else(is.na(peakdate), site.peakdate, peakdate), year, sep="-")), #if it's present, use the site-habitat peak date, otherwise use the site peak date
+         # is this within 1 month on either side of peak date (so 2 month window?)
+         peak.window.2mo = factor(if_else(abs(difftime(observation_datetime, 
+                                                       peak.date, units="days"))<32 , "Y", "N")),
+         # is this within 1.5 month on either side of peak date (so 3 month window?)
+         peak.window.3mo = factor(if_else(abs(difftime(observation_datetime, 
+                                                       peak.date, units="days"))<46 , "Y", "N")),
+         peak.window.4mo = factor(if_else(abs(difftime(observation_datetime, 
+                                                       peak.date, units="days"))<62 , "Y", "N")))
+
+
+
+
 ###############################################################################
  
 save(plant.cover, reduced.plant.cover, productivity, productivity.persample,
-     soil.periodic.merge, soil.initial, microbe.ITS.metadata,
-     file="ReducedMergedPlantSoilData.RData")
+     soil.periodic.merge, soil.initial, microbe.ITS.metadata, beetles, smammals, birds,
+     file="ReducedMergedData.RData")
 
 # All datasets have removed nlcdClass crops, pasture, wetlands.
 # All but the soil.initial only include 2019 and onwards.
 
-# not filtered by time of year but has column for peak window (2 months and 3 months)
+# not filtered by time of year but has column for peak window (2,3,4 months)
 # based on plant biomass data
