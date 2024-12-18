@@ -802,6 +802,48 @@ write.csv(daymetPlotmeans, file="DaymetPlotEnvDataMeans.csv", row.names = F)
 save(daymetPlotsummaries.long, daymetPlotmeans, file="DaymetPlotMeans.RData")
 
 
+#### using the microbial plots
+library(daymetr)
+daymet.micro.plots <- soil.periodic.merge %>%
+  dplyr::select(siteID, plotID, nlcdClass, decimalLatitude, decimalLongitude, elevation) %>%
+  distinct()
+
+daymet.batchplots <- daymet.micro.plots[,c(2,4,5)]
+
+
+# https://daymet.ornl.gov/overview 
+write.csv(daymet.batchplots,file="NEONdaymetMicroPlotinfo.csv",row.names = FALSE)
+daymetsoilplots <- download_daymet_batch(file_location = "NEONdaymetMicroPlotinfo.csv", 
+                                  start = 2018, end = 2022, simplify = TRUE)
+head(daymetsoilplots)
+
+unique(daymetsoilplots$measurement)
+
+daymetsoilplots$date <- as.Date(daymetsoilplots$yday-1, origin=paste(daymetsoilplots$year,"01-01",sep="-"))
+daymetsoilplots$month <- month(daymetsoilplots$date)
+
+names(daymetsoilplots)[1] <- "plotID"
+
+daymetsoilplots.sums <- daymetsoilplots %>%
+  pivot_wider(names_from = measurement, values_from = value) %>%
+  mutate(temp = (tmax..deg.c. + tmin..deg.c.)/2) %>%
+  mutate(temp.14days = zoo::rollapply(temp, 14, mean, align="right", fill=NA),
+         temp.30days = zoo::rollapply(temp, 30, mean, align="right", fill=NA),
+         temp.365days = zoo::rollapply(temp, 365, mean, align="right", fill=NA),
+         prcp.14days = zoo::rollapply(prcp..mm.day., 14, sum, align="right", fill=NA), # need to make sure there aren't any NAs in the dataset
+         prcp.30days = zoo::rollapply(prcp..mm.day., 30, sum, align="right", fill=NA),
+         prcp.365days = zoo::rollapply(prcp..mm.day., 365, sum, align="right", fill=NA))
+
+save(daymetsoilplots.sums,file="daymetSoilSums.RData")
+# daymetPlotsummaries.long <- daymetsoilplots %>%
+#   group_by(plotID,measurement) %>%
+#   summarise(mean = mean(value))
+# 
+# daymetPlotmeans <- pivot_wider(daymetPlotsummaries.long, 
+#                                names_from = measurement,
+#                                values_from = mean)
+# 
+# write.csv(daymetPlotmeans, file="DaymetPlotEnvDataMeans.csv", row.names = F)
 
 
 ###############################################################################

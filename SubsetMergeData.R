@@ -48,7 +48,7 @@ summary(factor(prod$hbp_perbout$nlcdClass[which(prod$hbp_perbout$clipArea>0.2)])
 summary(prod$hbp_perbout$clipLength*prod$hbp_perbout$clipWidth==prod$hbp_perbout$clipArea)
 #    Mode   FALSE    TRUE    NA's 
 # logical     213   22023       3 
-# 213 clipAreas don't each the product of width and length
+# 213 clipAreas don't equal the product of width and length
 # which ones are they?
 # [NAs seem to be a few dates sampling didn't happen, so no sampleID - can remove]
 
@@ -310,6 +310,7 @@ summary(factor(ls))
 # lots of repeat samples
 # 4 rows with sample "BLAN_038-M-5.5-36.5-20200714". 2 different measurements of two types of data. 
 # analyticalRepNumber goes from 1 to 4 if sample has 4 rows in data.
+#5897  5367
 
 # I will take means before merging. 
 soil.chem.ave <- soil.chem %>%
@@ -445,19 +446,20 @@ length(unique(microbe.ITS$geneticSampleID))
 # microbe.ITS and qaqc for it.
 soil.periodic.merge <- left_join(soil.periodic.merge,
                                  microbe.ITS.metadata %>%
-                                   select(geneticSampleID, qaqcStatus))
+                                   dplyr::select(geneticSampleID, qaqcStatus))
 names(soil.periodic.merge)[which(names(soil.periodic.merge)=="qaqcStatus")] <- "ITS.qaqcStatus"
 soil.periodic.merge$ITS.sequence = factor(ifelse(is.na(soil.periodic.merge$ITS.qaqcStatus), "N", "Y"))
 
 
 ### Remove crops, pasture, wetlands -----------------------------------------#
-soil.periodic.merge <- soil.periodic.merge %>%
-  filter(nlcdClass != "cultivatedCrops" & nlcdClass !="pastureHay" & 
-           nlcdClass !="emergentHerbaceousWetlands" & nlcdClass !="woodyWetlands")
-
-microbe.ITS.metadata <- microbe.ITS.metadata %>%
-  filter(nlcdClass != "cultivatedCrops" & nlcdClass !="pastureHay" & 
-           nlcdClass !="emergentHerbaceousWetlands" & nlcdClass !="woodyWetlands")
+# lorinda downloaded all the data, so don't subset until specific analyses
+# soil.periodic.merge <- soil.periodic.merge %>%
+#   filter(nlcdClass != "cultivatedCrops" & nlcdClass !="pastureHay" & 
+#            nlcdClass !="emergentHerbaceousWetlands" & nlcdClass !="woodyWetlands")
+# 
+# microbe.ITS.metadata <- microbe.ITS.metadata %>%
+#   filter(nlcdClass != "cultivatedCrops" & nlcdClass !="pastureHay" & 
+#            nlcdClass !="emergentHerbaceousWetlands" & nlcdClass !="woodyWetlands")
 
   
 ### Indicate peak biomass date windows for later subsetting -----------------#
@@ -467,7 +469,7 @@ soil.periodic.merge <- left_join(left_join(soil.periodic.merge %>%
                                    mutate(year = year(collectDate))
                                  , site.habitat.peakDate),
                                   site.peakDate) %>%
-  mutate(peak.date = mdy(paste(if_else(is.na(peakdate), site.peakdate, peakdate), year, sep="-")),
+  mutate(peak.date = mdy(paste(if_else(is.na(peakdate), site.peakdate, peakdate), year, sep="-")), ## DSNY KONA STER not in peakdate
          peak.window.2mo = factor(if_else(abs(difftime(ymd(collectDate), 
                                                    peak.date, units="days"))<32 , "Y", "N")),
          peak.window.3mo = factor(if_else(abs(difftime(ymd(collectDate), 
@@ -698,10 +700,24 @@ summary(unique(microbial.biomass.scaled$biomassID) %in% soil.periodic.merge$biom
 # totalLipidScaledConcentration
 
 soil.periodic.merge <- left_join(soil.periodic.merge, microbial.biomass.scaled)
-  
 
+######## bring in daymet environmental data :
+#load("daymetSoilSums.RData")
+soil.periodic.merge <- left_join(soil.periodic.merge, daymetsoilplots.sums[,c(1,8,18:23)], by = join_by(plotID == plotID, collectDate == date))
 
+#write_csv(soil.periodic.merge, file="soilPeriodicMerge.csv")
+##############################################################################
+# Lorinda merged metadata with her sequence numbers. a few are missing.
 
+sequenced.metadata <- read.csv("Merged_Neon_Microbial_metadata.csv")
+sequenced.metadata$collectDate <- as.Date(sequenced.metadata$collectDate)
+IDs <- sequenced.metadata$geneticSampleID[which(is.na(sequenced.metadata$coreCoordinateX))]
+# they are the habitat types we eliminated: wetlands and ag
+
+sequenced.metadata <- left_join(sequenced.metadata, 
+                                daymetsoilplots.sums[,c(1,8,18:23)], 
+                                by = join_by(plotID == plotID, collectDate == date))
+          
 ###############################################################################
 # Initial Soil Characterization
 ###############################################################################
@@ -817,7 +833,7 @@ soil.initial <- soil.initial %>%
   filter(nlcdClass != "cultivatedCrops" & nlcdClass !="pastureHay" & 
            nlcdClass !="emergentHerbaceousWetlands" & nlcdClass !="woodyWetlands")
 
-
+################################################################################
 # microbe.ITS.metadata has sampleTopDepth and sampleBottomDepth
 # need to think about how to match that up with initial sampling 
 # "horizonTopDepth"     and     "horizonBottomDepth"
@@ -853,7 +869,7 @@ for(i in 1:dim(microbe.ITS.metadata)[1]){
   sdat <- soil.initial %>%
     filter(siteID == microbe.ITS.metadata$siteID[i],
            nlcdClass == microbe.ITS.metadata$nlcdClass[i]) %>%
-    select(horizonID, horizonTopDepth, horizonBottomDepth)
+    dplyr::select(horizonID, horizonTopDepth, horizonBottomDepth)
   
   int.s <- interval(start = as.Date(sdat$horizonTopDepth*10, origin = "2020-01-01"),
                     end = as.Date(sdat$horizonBottomDepth*10, origin = "2020-01-01"))
@@ -871,14 +887,21 @@ for(i in 1:dim(microbe.ITS.metadata)[1]){
 summary(soil.horizon.lineup$n.initial.horizons.total)
 # Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
 # 0.000   0.000   0.000   1.244   1.000  18.000 
+length(which(soil.horizon.lineup$n.initial.horizons.total==0))
+# 3678 out of 6085
 
 # if want any overlap:
 summary(soil.horizon.lineup$n.initial.horizons.any)
 # Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
 # 0.00   11.00   18.00   20.47   29.00   49.00 
 # 45 out of 6085 don't overlap at all.
-# For each periodic soil sample could probably average 
-# initial soil variables across the ones that overlap any
+
+
+# ----------------------------------------------------------------------------#
+
+# For each periodic soil sample, average over site-habitat
+# initial soil variables across the ones whose horizons overlap any, and are within
+# the same  horizon category (organic or mineral)
 
 
 
@@ -887,6 +910,7 @@ summary(soil.horizon.lineup$n.initial.horizons.any)
 
 soilhorizon.periodictoinitial <- list()
 for(i in 1:dim(microbe.ITS.metadata)[1]){
+  hor <- microbe.ITS.metadata$horizon[i]
   mt <- microbe.ITS.metadata$sampleTopDepth[i]
   mb <- microbe.ITS.metadata$sampleBottomDepth[i]
   
@@ -898,38 +922,67 @@ for(i in 1:dim(microbe.ITS.metadata)[1]){
   sdat <- soil.initial %>%
     filter(siteID == microbe.ITS.metadata$siteID[i],
            nlcdClass == microbe.ITS.metadata$nlcdClass[i]) %>%
-    select(horizonID, horizonTopDepth, horizonBottomDepth)
+    dplyr::select(horizonID, horizonName, horizonTopDepth, horizonBottomDepth) # all the horizons for this site-habitat
   
   int.s <- interval(start = as.Date(sdat$horizonTopDepth*10, origin = "2020-01-01"),
                     end = as.Date(sdat$horizonBottomDepth*10, origin = "2020-01-01"))
   
-  
-  # int_overlaps(int.m, int.s) # which horizons overlap at all (any overlap not total overlap)
-  soilhorizon.periodictoinitial[[i]] <- sdat$horizonID[which(int_overlaps(int.m, int.s))]
-
+  x <- which(int_overlaps(int.m, int.s))  # which horizons overlap at all (any overlap not total overlap)
+  y <- grep("O", sdat$horizonName) # which are in the organic horizon (have O anywhere in the name)
+  if(hor=="O"){
+    soilhorizon.periodictoinitial[[i]] <- sdat$horizonID[ intersect(x,y)] # must both overlap and be in O horizon
+  } else {
+    soilhorizon.periodictoinitial[[i]] <- sdat$horizonID[ c(setdiff(x,y),setdiff(y,x))] # overlap but don't have O in horizon name
+  }
 }
 
+length(which(unlist(lapply(soilhorizon.periodictoinitial,length))==0))
+# 72 have no overlap 
+
+##################### Quality Control
+# i=2500
+# 
+# microbe.ITS.metadata[i,c("siteID", "nlcdClass","horizon","sampleTopDepth","sampleBottomDepth")]
+# 
+# soil.initial[match(soilhorizon.periodictoinitial[[i]],soil.initial$horizonID),
+#              c("horizonID","siteID","nlcdClass","horizonName","horizonTopDepth","horizonBottomDepth")]
+# # looks good 
 
 
 ####### average initial soil variables for any horizon in that site-habitat
 # that overlaps with microbial sampling --------------------------------------#
-scols <- c(33,36:71) # columns in the soil.initial data to average
-microbe.ITS.metadata.initial.soils <- data.frame(microbe.ITS.metadata[,c(1:4,36,37)], # columns in microbe.ITS.metadata to match by (top and bottom depth)
-                  soil.initial[dim(microbe.ITS.metadata)[1],scols]) # add the column names and NA
+
+scols <- c(33,36:71)
+microbe.ITS.metadata.initial.soils <- data.frame(microbe.ITS.metadata[,c(1:4,37,38)], # columns in microbe.ITS.metadata to match by (top and bottom depth)
+                                                 soil.initial[dim(microbe.ITS.metadata)[1],scols]) # add the column names and NA
 mcols <- 7:43 # which columns to put the new averages in
-for(r in 1:dim(dat)[1]){
-  hdat <- as.data.frame(soil.initial[match(soilhorizon.periodictoinitial[[r]], soil.initial$horizonID),])
-  for(c in 1:length(scols)){
-    microbe.ITS.metadata.initial.soils[r,mcols[c]] <- mean(hdat[,scols[c]], na.rm=T)
+
+for(r in 1:dim(microbe.ITS.metadata.initial.soils)[1]){
+  
+  sidat <- soil.initial %>%
+    filter(horizonID %in% soilhorizon.periodictoinitial[[r]]) %>%
+    group_by(siteID, nlcdClass) %>%
+    summarise(across(scols-2, ~ mean(.x, na.rm = TRUE)))
+  
+  if(dim(sidat)[1]>0){
+    microbe.ITS.metadata.initial.soils[r,mcols] <- sidat[,mcols-4]
   }
 }
-summary(microbe.ITS.metadata.initial.soils)
+length(which(apply(microbe.ITS.metadata.initial.soils[,7:43], 1, sum, na.rm=T)==0))
+#  some site-habitat-horizons were sampled more than once.
+# so each row isn't independent
 
+write.csv(microbe.ITS.metadata.initial.soils, file="MicrobeMetadataInitialSoils.csv")
 
+sequenced.metadata <- left_join(sequenced.metadata, microbe.ITS.metadata.initial.soils)
+write.csv(sequenced.metadata, file="SequencedMetadata.csv")
+save(sequenced.metadata, file="SequencedMetadata.RData")
 
+### make sure all initial soil data are in here including texture and bulk density
 
 ###############################################################################
 # Root biomass
+# Something is wrong with this merge since there are NAs for site and habitat
 ###############################################################################
 
 # depthIncrementID (from perDepth and perRoot) seems to match the first part of cnSampleID (CN)
@@ -938,32 +991,37 @@ summary(microbe.ITS.metadata.initial.soils)
 # namedLocation from CN seems to match pitNamedLocation from all other files - change name
 
 root.CN <- root.biomass.raw$mpr_carbonNitrogen %>%
-  select("namedLocation","siteID", "collectDate", "cnSampleID", "sampleType", 
+  dplyr::select("namedLocation","siteID", "collectDate", "cnSampleID", "sampleType", 
   "d15N",	"d13C",	"nitrogenPercent",	"carbonPercent",	"CNratio", "analyticalRepNumber") %>%
   mutate(pitProfileID = unlist(lapply(str_split(cnSampleID, "[.]",3), 
                                       function(y){paste(y[1],y[2],sep=".")}))) %>%
   rename(pitNamedLocation = namedLocation,
          sampleID =cnSampleID)
- 
+write.csv(root.CN, file="rootCarbonNitrogen.csv") 
 
 root.depth <- root.biomass.raw$mpr_perdepthincrement %>%
-  select("pitNamedLocation","pitProfileID",	"depthIncrementID",	"topDepth",	
+  dplyr::select("pitNamedLocation","pitProfileID",	"depthIncrementID",	"topDepth",	
          "bottomDepth",	"depthIncrementVolume")  
+write.csv(root.depth, file="rootPerDepthIncrement.csv") 
 
 
 root.pit <- root.biomass.raw$mpr_perpitprofile %>%
-  select("pitNamedLocation", "siteID",	"decimalLatitude",	"decimalLongitude", 
-         "elevation", "nlcdClass",   "pitID",	"pitProfileID",	"rootStatus",	
+  dplyr::select("pitNamedLocation", "siteID",	"decimalLatitude",	"decimalLongitude", 
+         "elevation", "nlcdClass", "endDate",  "pitID",	"pitProfileID",	"rootStatus",	
          "sizeCategory",	"maxProfileDepth",	"totalRootBiomass",	"depth100RootBiomass") %>%
   mutate(across(c(nlcdClass, rootStatus, sizeCategory), factor))
+# there are no NAs here for nlcdClass, so check why there are with the merge.
+write.csv(root.pit, file="rootPerPitProfile.csv") 
 
 root.perroot <- root.biomass.raw$mpr_perrootsample %>%
-  select("pitNamedLocation", "depthIncrementID",	"sampleID", "rootStatus",	
+  dplyr::select("pitNamedLocation", "endDate", "depthIncrementID",	"sampleID", "rootStatus",	
          "sizeCategory",	"rootDryMass", "incrementRootBiomass",	"incrementRootDensity") %>%
   mutate(pitProfileID = unlist(lapply(str_split(sampleID, "[.]",3), 
                                       function(y){paste(y[1],y[2],sep=".")}))) %>%
   mutate(across(c(rootStatus, sizeCategory), factor))
+write.csv(root.perroot, file="rootPerRootSample.csv")
 
+#### think more about this -------------------------------------------------------------------
 root_merge <- full_join(root.depth, root.perroot)
 root_merge <- full_join(root_merge, root.CN)
 root_merge <- full_join(root_merge, root.pit)
@@ -979,9 +1037,21 @@ root.site.habitat.summary <- root_merge %>%
 # looks like one pit per site (not site-habitat)
 # but there are some NAs. need to look at them... 
 
-root_merge[which(is.na(root_merge$nlcdClass)),]
+length(which(is.na(root_merge$nlcdClass)))
+# there are a bunch of NAs for habitat
+# and even NAs for siteID, fill in based on the pit names
+nas <- which(is.na(root_merge$siteID))
+root_merge$siteID[nas] <- str_trunc(root_merge$pitProfileID[nas], 4, ellipsis = "")
+
 
 write_csv(root.site.habitat.summary, file="RootSampling.csv")
+
+
+##### match up root biomass to periodic soil sampling and microbe metatdata
+# same as for initial soils, but since only 1 per site instead of site 
+# habitat, make sure it's lined up to the appropriate habitat
+
+
 
 
 ###############################################################################
@@ -1016,6 +1086,7 @@ beetles <- left_join(left_join(beetles %>%
 
 #### Small mammals -----------------------------------------------------------#
 
+### I have better estimates using prob of capture elsewhere
 smammalsDD <- neonDivData::data_small_mammal
 
 smammals <- smammalsDD %>%
