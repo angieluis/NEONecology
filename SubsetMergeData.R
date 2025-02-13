@@ -980,8 +980,86 @@ save(sequenced.metadata, file="SequencedMetadata.RData")
 
 ### make sure all initial soil data are in here including texture and bulk density
 
+
 ###############################################################################
-# Root biomass
+# Root biomass and chemistry, periodic
+###############################################################################
+
+load("RootBiomassPeriodicRaw.Rdata")
+
+# within the area surrounding the NEON eddy covariance tower. 
+# At many sites this will also be the dominant vegetation type(s). 
+
+# The bbc_percore table includes up to two records (sampleIDs) per clipID. 
+# The bbc_rootmass table includes up to three records (1 per size class; 
+# subsampleIDs) per sampleID. Prior to May 2019 there were up to eight 
+# (4 sizeCategory classes x 2 rootStatus classes) records (subsampleIDs) 
+# per sampleID. The bbc_dilution table includes zero or one record 
+# (dilutionSubsampleID) per subsampleID. The bbc_chemistryPooling table 
+# includes up to three records (three pooled size classes, cnSampleIDs) 
+# per clipID. Prior to May 2019, there were up to four records (four pooled 
+# live size classes, cnSampleIDs) per clipID. The bbc_rootChemistry table 
+# includes one or more chemistry and stable isotope records 
+# (if analytical replicates were conducted and/or if C and N were analyzed separately) 
+# per cnSampleID. There should only be one instance per cnSampleID x 
+# analyticalRepNumber x co2Trapped combination, but duplicates may exist 
+# where protocol and/or data entry aberrations have occurred. Users should 
+# check carefully for anomalies before analyzing data.
+
+# nlcdClass is not here. Most of the plot names don't line up with plant plots.
+# Need to find what habitat type the eddy covariance tower was in for each site
+x <- reduced.plant.cover %>%
+  filter(plotType=="tower") %>%
+  group_by(siteID) %>%
+  summarise(nhabs = length(unique(nlcdClass)))
+summary(factor(x$nhabs))
+#  1  2  3 
+# 32  8  1 
+# sometimes more than 1 habitat type for plant plots labeled as 'tower' 
+x[which(x$nhabs>1),]
+# siteID   nhabs
+# <fct>    <int>
+# 1 BART       2
+# 2 DEJU       2
+# 3 HARV       2
+# 4 HEAL       2
+# 5 NIWO       3
+# 6 OAES       2
+# 7 TALL       2
+# 8 UNDE       2
+# 9 YELL       2
+
+
+bbc_percore <- root.biomass.periodic.raw$bbc_percore %>%
+  select(siteID, plotID, subplotID, clipID, coreID, decimalLatitude, decimalLongitude,
+         elevation, collectDate, sampleID, wst10cmDist, wst1cmDist, bareGround, 
+         litterDepth, rootSamplingMethod, rootSampleArea, rootSampleDepth) %>%
+  mutate_at(vars(siteID, plotID, subplotID, rootSamplingMethod), factor)
+
+bbc_percore %>%
+  group_by(siteID, plotID) %>%
+  summarise(n.cores = length(unique(coreID)),
+            n.clips = length(unique(clipID)),
+            n.dates = length(unique(collectDate)))
+
+
+bbc_rootmass <- root.biomass.periodic.raw$bbc_rootmass %>%
+  select(siteID, plotID, sampleID, subsampleID, collectDate, sizeCategory,
+         rootStatus, dryMass, mycorrhizaeVisible) %>%
+  mutate_at(vars(siteID, plotID, sizeCategory, rootStatus, mycorrhizaeVisible), factor)
+
+bbc_rootChemistry <- root.biomass.periodic.raw$bbc_rootChemistry %>%
+  select(siteID, plotID, collectDate, poolSampleID, cnSampleID, sampleType, co2Trapped,
+         d15N, d13C, nitrogenPercent, carbonPercent, CNratio, analyticalRepNumber) %>%
+  mutate_at(vars(siteID, plotID, sampleType, co2Trapped, analyticalRepNumber), factor)
+
+
+
+
+
+
+###############################################################################
+# Root biomass, megapit (initial)
 # Something is wrong with this merge since there are NAs for site and habitat
 ###############################################################################
 
@@ -997,12 +1075,12 @@ root.CN <- root.biomass.raw$mpr_carbonNitrogen %>%
                                       function(y){paste(y[1],y[2],sep=".")}))) %>%
   rename(pitNamedLocation = namedLocation,
          sampleID =cnSampleID)
-write.csv(root.CN, file="rootCarbonNitrogen.csv") 
+#write.csv(root.CN, file="rootCarbonNitrogen.csv") 
 
 root.depth <- root.biomass.raw$mpr_perdepthincrement %>%
   dplyr::select("pitNamedLocation","pitProfileID",	"depthIncrementID",	"topDepth",	
          "bottomDepth",	"depthIncrementVolume")  
-write.csv(root.depth, file="rootPerDepthIncrement.csv") 
+#write.csv(root.depth, file="rootPerDepthIncrement.csv") 
 
 
 root.pit <- root.biomass.raw$mpr_perpitprofile %>%
@@ -1011,15 +1089,20 @@ root.pit <- root.biomass.raw$mpr_perpitprofile %>%
          "sizeCategory",	"maxProfileDepth",	"totalRootBiomass",	"depth100RootBiomass") %>%
   mutate(across(c(nlcdClass, rootStatus, sizeCategory), factor))
 # there are no NAs here for nlcdClass, so check why there are with the merge.
-write.csv(root.pit, file="rootPerPitProfile.csv") 
+#write.csv(root.pit, file="rootPerPitProfile.csv") 
 
-root.perroot <- root.biomass.raw$mpr_perrootsample %>%
-  dplyr::select("pitNamedLocation", "endDate", "depthIncrementID",	"sampleID", "rootStatus",	
-         "sizeCategory",	"rootDryMass", "incrementRootBiomass",	"incrementRootDensity") %>%
-  mutate(pitProfileID = unlist(lapply(str_split(sampleID, "[.]",3), 
-                                      function(y){paste(y[1],y[2],sep=".")}))) %>%
-  mutate(across(c(rootStatus, sizeCategory), factor))
-write.csv(root.perroot, file="rootPerRootSample.csv")
+# there are 3 pitprofile IDs per pitID.
+# per pitprofileID there are rows for each combo of rootStatus: live/dead and 
+# sizeCategory: more/less than 2mm. So up to 12 rows per pit. (some have only live so 6 rows)
+
+### Not going to look at per root row, just per pit.
+# root.perroot <- root.biomass.raw$mpr_perrootsample %>%
+#   dplyr::select("pitNamedLocation", "endDate", "depthIncrementID",	"sampleID", "rootStatus",	
+#          "sizeCategory",	"rootDryMass", "incrementRootBiomass",	"incrementRootDensity") %>%
+#   mutate(pitProfileID = unlist(lapply(str_split(sampleID, "[.]",3), 
+#                                       function(y){paste(y[1],y[2],sep=".")}))) %>%
+#   mutate(across(c(rootStatus, sizeCategory), factor))
+# write.csv(root.perroot, file="rootPerRootSample.csv")
 
 #### think more about this -------------------------------------------------------------------
 root_merge <- full_join(root.depth, root.perroot)
