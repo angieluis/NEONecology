@@ -605,6 +605,19 @@ write_csv(root.biomass.raw$mpr_carbonNitrogen, file="RootBiomass_CarbonNitrogen.
 
 
 ###############################################################################
+## Root biomass and chemistry, periodic
+###############################################################################
+
+
+root.biomass.periodic.raw <- loadByProduct("DP1.10067.001", 
+                                  token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzI1NiJ9.eyJhdWQiOiJodHRwczovL2RhdGEubmVvbnNjaWVuY2Uub3JnL2FwaS92MC8iLCJzdWIiOiJhbmdlbGEubHVpc0B1bW9udGFuYS5lZHUiLCJzY29wZSI6InJhdGU6cHVibGljIiwiaXNzIjoiaHR0cHM6Ly9kYXRhLm5lb25zY2llbmNlLm9yZy8iLCJleHAiOjE4NzMwMzE4NjksImlhdCI6MTcxNTM1MTg2OSwiZW1haWwiOiJhbmdlbGEubHVpc0B1bW9udGFuYS5lZHUifQ.YLxLG3mCbxvV8RTI2amQFiOum--sxt5q5PgL4UIWaOnsILZTCu1kBRbAkoroYJEs5vNeDOI_6Tgk2913yV7NiA"
+)
+
+save(root.biomass.periodic.raw, file="RootBiomassPeriodicRaw.Rdata")
+
+
+
+###############################################################################
 # Save basic data for further Analyses
 ###############################################################################
 
