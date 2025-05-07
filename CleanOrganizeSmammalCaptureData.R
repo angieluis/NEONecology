@@ -299,6 +299,84 @@ hanta.species.summary <- smammal.captures.clean %>%
             n_test = length(which(!is.na(hantaResult))),
             n_prev = n_pos/n_test)
 
+
+### Add tick-borne pathogen data ------------------------------------------- ##
+
+load("TickBornePathogenTestResults.RData")
+
+### lots of blood samples don't line up to smammal data 
+
+summary(TBD.bloodtesting$sampleID %in% smammal.captures.clean$bloodSampleID)
+#    Mode   FALSE    TRUE 
+# logical   47697   37582
+
+summary(TBD.bloodtesting$sampleID %in% NEONsmammalcaptures$bloodSampleID)
+#    Mode   FALSE    TRUE 
+# logical   47697   37582 
+# the problem is not that I've removed individuals in the 'clean data'
+
+summary(TBD.bloodtesting$sampleCode %in% NEONsmammalcaptures$bloodSampleBarcode)
+#    Mode   FALSE    TRUE 
+# logical   47653   37626
+# doesn't matter whether I use sampleID or sampleCode, sample code catches a few more
+
+# the tick data contains 1 year more than the smammal data I'm working with
+# but still there are lot not identified.
+summary(TBD.bloodtesting$collectDate[which(TBD.bloodtesting$sampleID %in% smammal.captures.clean$bloodSampleID
+  ==FALSE)])
+max(smammal.captures.clean$collectDate)
+# "2022-12-15 GMT"
+
+ds <- TBD.bloodtesting$collectDate[which(TBD.bloodtesting$sampleID %in% smammal.captures.clean$bloodSampleID
+                                         ==FALSE)]
+length(which(ds > max(smammal.captures.clean$collectDate))) # how many after "2022-12-15 GMT"
+# 24342 of the pathogen samples were after my smammal data ends
+# late leaves 23355 that should be in the dataset.
+
+# ".E" is supposed to be earSampleID and ".B" is bloodSampleID but in the 
+# smammal data, bloodSampleID sometimes has .E on the end
+
+# make another column that ignores the end. Indicates that animal that day:
+TBD.bloodtesting$animalSampleID <- substr(TBD.bloodtesting$sampleID,1,nchar(TBD.bloodtesting$sampleID)-2)
+
+# for smammal.captures, use blood and then if missing use ear
+smammal.captures.clean$animalSampleID <- substr(smammal.captures.clean$bloodSampleID,
+                                                1,nchar(smammal.captures.clean$bloodSampleID)-2)
+inds <- which(is.na(smammal.captures.clean$animalSampleID))
+smammal.captures.clean$animalSampleID[inds] <- substr(smammal.captures.clean$earSampleID[inds] ,
+                                                1,nchar(smammal.captures.clean$earSampleID[inds] )-2)
+
+summary(TBD.bloodtesting$animalSampleID %in% smammal.captures.clean$animalSampleID)
+#    Mode   FALSE    TRUE 
+# logical   24414   60865 
+ds <- TBD.bloodtesting$collectDate[which(TBD.bloodtesting$animalSampleID %in% 
+                                           smammal.captures.clean$animalSampleID
+                                         ==FALSE)]
+length(which(ds < max(smammal.captures.clean$collectDate))) # how many are missing before "2022-12-15 GMT"
+# much better, still about 72 missing animals compared to TBD test results
+
+### merge the tick borne pathogen data with the smammal capture data
+
+# first want each animal capture to be a row and results of various tests as columns
+TBD.bySample <- TBD.bloodtesting %>%
+  mutate(testResult2 = ifelse(testResult=="Negative", 0, ifelse(testResult=="Positive", 1, NA))) %>%
+  pivot_wider(id_cols = c(siteID, plotID, animalSampleID, collectDate),
+              names_from = testPathogenName,
+              values_from = testResult2,
+              values_fn = ~ sum(.x, na.rm=TRUE)) # sometimes both blood and ear were tested so take sum
+
+summary(TBD.bySample)
+# a bunch of the pathogens weren't found at all in these data, so remove those columns
+TBD.bySample <- TBD.bySample[ ,c(1:4, which(apply(TBD.bySample[,-(1:4)],2,sum, na.rm=T)!=0)+4)]
+# 0 means all samples were negative, 1 means 1 sample (either blood or ear was positive), 2 means both positive
+# replace all 2 with 1, so 1 will mean any sample was positive
+TBD.bySample[,5:dim(TBD.bySample)[2]] <- replace(TBD.bySample[,5:dim(TBD.bySample)[2]], TBD.bySample[,5:dim(TBD.bySample)[2]]==2, 1)
+
+
+smammal.captures.clean <- left_join(smammal.captures.clean, TBD.bySample)
+
+
+
 ################################################################################
 ### For capture rate estimation - Remove sessions that only have 1 night ---- ## 
 ### (won't help with estimation)
@@ -345,6 +423,8 @@ save(smammal.plot.data, smammal.captures.clean, trapping.session.info,
 ##
 ## see "FunctionsForAllSpeciesEstimations.R" for data functions
 ## See "ModelRunAllSpeciesEstimation.R" for model and run code
+## Actually using "ModelRunSpeciesTrapMMCaptureRateEstimations.R" which accounts 
+## variation in traps set per night
 ############################################################################
 
 
