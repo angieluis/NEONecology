@@ -336,6 +336,71 @@ hanta.bloodtesting <- as.tibble(hanta$rpt_bloodtesting) %>%
 
 save(hanta.bloodtesting, file="HantavirusTestResults.RData")
 
+
+
+##############################################################################
+# Rodent pathogen status, tick-borne
+# DP1.10064.002
+##############################################################################
+
+# Presence/absence of tick-borne diseases (or antibodies to same) in each single
+# rodent sample from 2020-onward. Prior to 2020, the protocol was used to detect
+# hantavirus; these data are available in the Rodent-borne pathogen status data 
+# product (DP1.10064.001).
+
+TBD <- loadByProduct("DP1.10064.002", 
+                       token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzI1NiJ9.eyJhdWQiOiJodHRwczovL2RhdGEubmVvbnNjaWVuY2Uub3JnL2FwaS92MC8iLCJzdWIiOiJhbmdlbGEubHVpc0B1bW9udGFuYS5lZHUiLCJzY29wZSI6InJhdGU6cHVibGljIiwiaXNzIjoiaHR0cHM6Ly9kYXRhLm5lb25zY2llbmNlLm9yZy8iLCJleHAiOjE4NzMwMzE4NjksImlhdCI6MTcxNTM1MTg2OSwiZW1haWwiOiJhbmdlbGEubHVpc0B1bW9udGFuYS5lZHUifQ.YLxLG3mCbxvV8RTI2amQFiOum--sxt5q5PgL4UIWaOnsILZTCu1kBRbAkoroYJEs5vNeDOI_6Tgk2913yV7NiA"
+)
+
+names(TBD)
+
+head(TBD$rpt2_pathogentesting)
+TBD.bloodtesting <- as_tibble(TBD$rpt2_pathogentesting) %>%
+  mutate(collectDate = floor_date(collectDate, unit="days")) %>%
+  mutate_at(vars(siteID, plotID, sampleCondition, testPathogenName, testResult,
+                  sampleCode, testingID), factor)
+
+save(TBD.bloodtesting, file="TickBornePathogenTestResults.RData")
+
+
+##############################################################################
+# Ticks sampled using drag cloths
+# DP1.10093.001
+##############################################################################
+# Abundance and density of ticks collected by drag and/or flag sampling 
+# (by species and/or lifestage)
+
+ticks <- loadByProduct("DP1.10093.001", 
+                     token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzI1NiJ9.eyJhdWQiOiJodHRwczovL2RhdGEubmVvbnNjaWVuY2Uub3JnL2FwaS92MC8iLCJzdWIiOiJhbmdlbGEubHVpc0B1bW9udGFuYS5lZHUiLCJzY29wZSI6InJhdGU6cHVibGljIiwiaXNzIjoiaHR0cHM6Ly9kYXRhLm5lb25zY2llbmNlLm9yZy8iLCJleHAiOjE4NzMwMzE4NjksImlhdCI6MTcxNTM1MTg2OSwiZW1haWwiOiJhbmdlbGEubHVpc0B1bW9udGFuYS5lZHUifQ.YLxLG3mCbxvV8RTI2amQFiOum--sxt5q5PgL4UIWaOnsILZTCu1kBRbAkoroYJEs5vNeDOI_6Tgk2913yV7NiA"
+)
+names(ticks)
+# [1] "categoricalCodes_10093"      "citation_10093_RELEASE-2025" "issueLog_10093"             
+# [4] "readme_10093"                "tck_fielddata"               "tck_taxonomyProcessed"      
+# [7] "validation_10093"            "variables_10093" 
+
+# I will use tck_fielddata which lists how many ticks were caught but not IDed
+# some were IDed and that's in tck_taxonomyProcessed but it wasn't all of them
+
+tick_sampling <- ticks$tck_fielddata
+save(tick_sampling, file="TickSampling.RData")
+
+##############################################################################
+# Tick pathogen status
+# DP1.10092.001
+##############################################################################
+
+# Presence/absence of a pathogen in each single tick sample
+tickPathogenStatus <- loadByProduct("DP1.10092.001", 
+                       token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzI1NiJ9.eyJhdWQiOiJodHRwczovL2RhdGEubmVvbnNjaWVuY2Uub3JnL2FwaS92MC8iLCJzdWIiOiJhbmdlbGEubHVpc0B1bW9udGFuYS5lZHUiLCJzY29wZSI6InJhdGU6cHVibGljIiwiaXNzIjoiaHR0cHM6Ly9kYXRhLm5lb25zY2llbmNlLm9yZy8iLCJleHAiOjE4NzMwMzE4NjksImlhdCI6MTcxNTM1MTg2OSwiZW1haWwiOiJhbmdlbGEubHVpc0B1bW9udGFuYS5lZHUifQ.YLxLG3mCbxvV8RTI2amQFiOum--sxt5q5PgL4UIWaOnsILZTCu1kBRbAkoroYJEs5vNeDOI_6Tgk2913yV7NiA"
+)
+
+head(tickPathogenStatus$tck_pathogen)
+
+save(tickPathogenStatus, file="TickPathogenStatus.RData")
+
+
+
+
 ##############################################################################
 ## Productivity
 ## Raw data downloaded using neonUtilities
@@ -762,6 +827,22 @@ temp <- loadByProduct("DP1.00003.001", startdate = "2019-01", enddate = "2022-12
 # depths (swc_depthsV2.csv) have been added to the data product download package 
 # until the data product algorithms are corrected.
 
+# Mosquito sampled from CO2 traps
+# DP1.10043.001
+# Taxonomically identified mosquitoes and the plots and times from which they were collected
+
+# Mosquito pathogen status
+# DP1.10041.001
+# Presence/absence of a pathogen in a single mosquito sample (pool)
+
+# Tick pathogen status
+# DP1.10092.001	
+# Presence/absence of a pathogen in each single tick sample
+
+# Ticks sampled using drag cloths
+# DP1.10093.001	
+# Abundance and density of ticks collected by drag and/or flag sampling 
+# (by species and/or lifestage)
 
 
 ##############################################################################
