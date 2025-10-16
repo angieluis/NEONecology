@@ -188,6 +188,7 @@ taxa.capture.fun <- function(
     ID.col = "plot_taxon_tag", # individual identifier as character vector, e.g., "tagID"
     taxa.to.include = NULL, #  if NULL, then use all. Otherwise a vector of 4-letter species codes (or other levels of group) to include
     include.hanta = TRUE, # if TRUE then need output to be longdata to see it. 
+    include.Borrelia = FALSE, # if TRUE then need output to be longdata
     wide.or.long = "long"){ # output as wide (with columns for taxa) or long?
   
   names(captures)[which(names(captures)==ID.col)] <- "ID"
@@ -213,6 +214,14 @@ taxa.capture.fun <- function(
       summarise(hantaPos = length(which(hantaResult=="Positive")),
                 hantaTested = length(which(hantaResult == "Positive" | hantaResult == "Negative")))
     out.data <- left_join(out.data, hanta.data)
+  }
+  
+  if(include.Borrelia == TRUE){
+    Borrelia.data <- left_join(captures, session.info) %>%
+      group_by(siteID, plotID, prim.session, group.tmp) %>%
+      summarise(BorreliaPos = length(which(Borrelia_spp.==1)),
+                BorreliaTested = length(which(Borrelia_spp. == 0 | Borrelia_spp. == 1)))
+    out.data <- left_join(out.data, Borrelia.data)
   }
   
   prim.ses <- session.info %>%
@@ -295,6 +304,7 @@ NEON.N.estimates.fromcaptures.speciesmodel <- function(
 # and eval(expr, envir) # expression and named data
 
 
+##### Check the assumption about trapnights on this!!!!!!!!!!!!!!!!!!!!!!!
 # Michaelis-Menten model where estimate is half saturation constant of 
 # the effect of traps
 # columns in p.param.estimates are 'species', 'trap_k' (estimate),
