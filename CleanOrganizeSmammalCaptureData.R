@@ -331,12 +331,13 @@ ds <- TBD.bloodtesting$collectDate[which(TBD.bloodtesting$sampleID %in% smammal.
                                          ==FALSE)]
 length(which(ds > max(smammal.captures.clean$collectDate))) # how many after "2022-12-15 GMT"
 # 24342 of the pathogen samples were after my smammal data ends
-# late leaves 23355 that should be in the dataset.
+# that leaves 23355 that should be in the dataset.
 
 # ".E" is supposed to be earSampleID and ".B" is bloodSampleID but in the 
-# smammal data, bloodSampleID sometimes has .E on the end
+# smammal data, bloodSampleID sometimes has .E on the end and both were tested 
 
 # make another column that ignores the end. Indicates that animal that day:
+TBD.bloodtesting$sampleID <- as.character(TBD.bloodtesting$sampleID)
 TBD.bloodtesting$animalSampleID <- substr(TBD.bloodtesting$sampleID,1,nchar(TBD.bloodtesting$sampleID)-2)
 
 # for smammal.captures, use blood and then if missing use ear
@@ -373,9 +374,28 @@ TBD.bySample <- TBD.bySample[ ,c(1:4, which(apply(TBD.bySample[,-(1:4)],2,sum, n
 TBD.bySample[,5:dim(TBD.bySample)[2]] <- replace(TBD.bySample[,5:dim(TBD.bySample)[2]], TBD.bySample[,5:dim(TBD.bySample)[2]]==2, 1)
 
 
-smammal.captures.clean <- left_join(smammal.captures.clean, TBD.bySample)
+smammal.captures.clean <- left_join(smammal.captures.clean, 
+                                    TBD.bySample %>%
+                                      rename_with( ~ gsub(" ", "_", .x, fixed = TRUE)))
+
+x <- smammal.captures.clean %>%
+  group_by(siteID) %>%
+  summarise(numcaps = n(),
+            numSNVpos = length(which(hantaResult == "Positive")),
+            propSNVpos = length(which(hantaResult == "Positive"))/length(which(hantaResult != "Not tested")),
+            numBorreliapos = length(which(Borrelia_spp.==1)),
+            propBorreliapos = length(which(Borrelia_spp.==1))/length(which(!is.na(Borrelia_spp.)))
+            )
+as.data.frame(x)
+# none were tested for both - they tested hanta and then in 2020 switched to TBD
 
 
+summary(smammal.captures.clean$collectDate[which(smammal.captures.clean$nymphalTicksAttached=="Y")])
+
+summary(interaction(smammal.captures.clean$nymphalTicksAttached,smammal.captures.clean$Borrelia_spp.))
+summary(interaction(smammal.captures.clean$larvalTicksAttached,smammal.captures.clean$Borrelia_spp.))
+
+save(smammal.captures.clean, trapping.session.info, file="SmammalCaptureClean.RData")
 
 ################################################################################
 ### For capture rate estimation - Remove sessions that only have 1 night ---- ## 
