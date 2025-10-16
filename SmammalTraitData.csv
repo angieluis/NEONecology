@@ -1,0 +1,135 @@
+Scientific,Diet.Inv,Diet.Vend,Diet.Vect,Diet.Vfish,Diet.Vunk,Diet.Scav,Diet.Fruit,Diet.Nect,Diet.Seed,Diet.PlantO,Activity.Nocturnal,Activity.Crepuscular,Activity.Diurnal,BodyMass.Value,Scientific2,genus,common_name,litter_or_clutch_size_n,litters_or_clutches_per_y,adult_body_mass_g,maximum_longevity_y,gestation_d,longevity_y,adult_svl_cm,offspring.peryear
+Microtus oeconomus,0,0,0,0,0,0,0,0,20,80,1,1,1,34.38,Alexandromys oeconomus,Microtus,Root Vole,5.76,3.44,33.1,2.166666667,21.55978,1.8,14.452,19.8144
+Ammospermophilus harrisii,20,0,0,0,0,10,20,0,20,30,0,0,1,122,Ammospermophilus harrisii,Ammospermophilus,Harris's Antelope Squirrel,6.66,1,126,10.6,29.35646,10.58333333,16.3585,6.66
+Ammospermophilus leucurus,20,0,0,0,0,10,20,0,20,30,0,0,1,103.67,Ammospermophilus leucurus,Ammospermophilus,White-tailed Antelope Squirrel,8,1.315,96.75,11.2,29.19,5.833333333,15.957,10.52
+Baiomys taylori,10,0,0,0,0,0,0,0,10,80,0,1,1,8,Baiomys taylori,Baiomys,Northern Pygmy Mouse,2.67,10,7.43,3.583333333,21.99,3.13,7.245,26.7
+Blarina brevicauda,40,0,0,0,30,0,0,0,0,30,1,1,1,28,Blarina brevicauda,Blarina,Northern Short-tailed Shrew,5.73,3,20.7,2.75,20.08776,2.370833333,11.121,17.19
+Blarina carolinensis,40,0,0,0,30,0,0,0,0,30,1,1,1,13.5,Blarina carolinensis,Blarina,Southern Short-tailed Shrew,4.12,3,20.45,2.75,20.08776,2.370833333,10.16,12.36
+Blarina hylophaga,40,0,0,0,30,0,0,0,0,30,1,1,1,14.5,Blarina hylophaga,Blarina,Elliot's Short-tailed Shrew,5,2.5,18.56,2.8,21,2.370833333,10.16,12.5
+Spermophilus lateralis,20,0,0,0,0,0,0,0,40,40,0,0,1,191,Callospermophilus lateralis,Spermophilus,Golden-mantled Ground Squirrel,5.12,0.97,227.3,10.4,30.436,10.31666667,31.019,4.9664
+Chaetodipus baileyi,10,0,0,0,0,0,0,0,80,10,1,0,0,26.35,Chaetodipus baileyi,Chaetodipus,Bailey's Pocket Mouse,3.68,NA,28.77,3.991666667,NA,3.991666667,10.9465,NA
+Chaetodipus californicus,10,0,0,0,0,0,0,0,80,10,1,0,0,22,Chaetodipus californicus,Chaetodipus,California Pocket Mouse,4,NA,23.01,1.833333333,25.21094,1.833333333,NA,NA
+Chaetodipus eremicus,20,0,0,0,0,0,0,0,70,10,1,0,0,20.31,Chaetodipus eremicus,Chaetodipus,Chihuahuan Pocket Mouse,3.645,NA,15.57,4.408333333,25.78312,4.408333333,7.736,NA
+Chaetodipus hispidus,10,0,0,0,0,0,0,0,80,10,1,0,0,32,Chaetodipus hispidus,Chaetodipus,Hispid Pocket Mouse,5.12,1.875,35.7,3.991666667,NA,3.991666667,10.451,9.6
+Chaetodipus intermedius,10,0,0,0,0,0,0,0,80,10,1,0,0,16.5,Chaetodipus intermedius,Chaetodipus,Rock Pocket Mouse,5.015,NA,15.45,6.65,NA,6.65,NA,NA
+Chaetodipus penicillatus,10,0,0,0,0,0,0,0,80,10,1,0,0,16.89,Chaetodipus penicillatus,Chaetodipus,Desert Pocket Mouse,3.545,NA,15.57,4.408333333,25.78312,4.408333333,7.736,NA
+Condylura cristata,80,0,0,20,0,0,0,0,0,0,1,1,1,84,Condylura cristata,Condylura,Star-nosed Mole,4.42,1,52.15,3,40,2.5,12.1325,4.42
+Cryptotis parva,40,0,30,0,0,30,0,0,0,0,1,0,0,4.98,Cryptotis parva,Cryptotis,North American Least Shrew,4.55,2.5,6.2,3.5,21,2.166666667,7.2995,11.375
+Dicrostonyx groenlandicus,0,0,0,0,0,0,20,0,0,80,1,0,0,54.4,Dicrostonyx groenlandicus,Dicrostonyx,Nearctic Collared Lemming,3.4,2.5,58.44,3.3,20.84,3.3,13.716,8.5
+Dipodomys heermanni,20,0,0,0,0,0,20,0,30,30,1,0,0,72,Dipodomys heermanni,Dipodomys,Heermann's Kangaroo Rat,3.11,2,64.15,8.3,31,8.233333333,15.5625,6.22
+Dipodomys merriami,20,0,0,0,0,0,20,0,30,30,1,0,0,42,Dipodomys merriami,Dipodomys,Merriam's Kangaroo Rat,2.3,1.63,37.805,9.7,27.8490625,9.65,14.927,3.7489999999999997
+Dipodomys microps,20,0,0,0,0,0,20,0,30,30,1,0,0,54.6,Dipodomys microps,Dipodomys,Chisel-toothed Kangaroo Rat,2.385,1,55.16,3.658333333,31.32172,3.658333333,15.6235,2.385
+Dipodomys ordii,20,0,0,0,0,0,20,0,30,30,1,0,0,60.4,Dipodomys ordii,Dipodomys,Ord's Kangaroo Rat,3.15,2,49.6,9.9,29.91082,9.816666667,15.696,6.3
+Dipodomys spectabilis,20,0,0,0,0,0,20,0,30,30,1,0,0,135.88,Dipodomys spectabilis,Dipodomys,Banner-tailed Kangaroo Rat,2.65,2,124.61,12.7,23.5,12.64166667,17.057,5.3
+Glaucomys sabrinus,0,0,0,0,0,0,30,0,40,30,1,0,0,166,Glaucomys sabrinus,Glaucomys,Northern Flying Squirrel,3,1,148,14.2,40,13,26.8,3
+Glaucomys volans,0,0,0,0,0,0,30,0,40,30,1,0,0,63.87,Glaucomys volans,Glaucomys,Southern Flying Squirrel,3.13,1.665,65.4,19,40,14.16666667,17.149,5.21145
+Spermophilus tridecemlineatus,20,0,0,0,0,0,0,0,40,40,0,0,1,131.67,Ictidomys tridecemlineatus,Spermophilus,Thirteen-lined Ground Squirrel,8.09,1.185,182,7.9,27.75,7.9,27.175,9.58665
+Lemmiscus curtatus,0,0,0,0,0,0,0,0,0,100,1,1,0,28.27,Lemmiscus curtatus,Lemmiscus,Sagebrush Vole,5.61,3,28.27,NA,25.05876,NA,11.4,16.830000000000002
+Lemmus trimucronatus,0,0,0,0,0,0,10,0,0,90,1,1,1,69.82,Lemmus trimucronatus,Lemmus,Nearctic Brown Lemming,6.39,3.25,60.8,1.666666667,20.77,1.666666667,13.5,20.7675
+Microtus californicus,0,0,0,0,0,0,0,0,20,80,1,1,1,57.42,Microtus californicus,Microtus,California Vole,4.62,4.915,53.5,2.083333333,21.18,2.083333333,14.09,22.7073
+Microtus longicaudus,0,0,0,0,0,0,0,0,20,80,1,1,1,46.71,Microtus longicaudus,Microtus,Long-tailed Vole,4.975,1.9,32.5,1.166666667,NA,1.166666667,13.5,9.452499999999999
+Microtus miurus,0,0,0,0,0,0,0,0,20,80,1,1,1,41,Microtus miurus,Microtus,Singing Vole,5.96,4.67,40.25,2.141666667,21,2.141666667,12.318,27.833199999999998
+Microtus montanus,0,0,0,0,0,0,0,0,20,80,1,1,1,36.33,Microtus montanus,Microtus,Montane Vole,5.18,4.63,35.1,NA,21.2176,NA,13.2085,23.9834
+Microtus ochrogaster,0,0,0,0,0,0,0,0,20,80,1,1,1,38.01,Microtus ochrogaster,Microtus,Prairie Vole,3.8,4,46.7,5.325,22.52264,5.3,12.4435,15.2
+Microtus oregoni,0,0,0,0,0,0,0,0,20,80,1,1,1,20.35,Microtus oregoni,Microtus,Creeping Vole,3.3,4.6,20.425,1.25,23.78504,0.666666667,10.561,15.179999999999998
+Microtus pennsylvanicus,0,0,0,0,0,0,0,0,20,80,1,1,1,36.75,Microtus pennsylvanicus,Microtus,Meadow Vole,5.06,2.64,38.55,2.908333333,21.2726,1.333333333,12.2465,13.3584
+Microtus pinetorum,0,0,0,0,0,0,0,0,20,80,1,1,1,26.28,Microtus pinetorum,Microtus,Woodland Vole,2.89,2.7,25.5,3.825,22.827,3.3,10.3025,7.803000000000001
+Microtus xanthognathus,0,0,0,0,0,0,0,0,20,80,1,1,1,125.75,Microtus xanthognathus,Microtus,Taiga Vole,8.175,2,92.65,NA,NA,NA,16.718,16.35
+Mus musculus,20,0,0,0,0,0,0,0,20,60,1,0,0,16.25,Mus musculus,Mus,House Mouse,6.07,4.57,20.5,6,19.6,5,9.5,27.739900000000002
+Mustela erminea,10,70,10,0,10,0,0,0,0,0,1,0,0,119.38,Mustela erminea,Mustela,Ermine,6.755,1,110.33,12.5,43.26174,11.14166667,27.0325,6.755
+Mustela frenata,0,100,0,0,0,0,0,0,0,0,1,1,1,147,Mustela frenata,Mustela,Long-tailed Weasel,6.22,1,170.315,8.8,24.95752,7.4,24.7655,6.22
+Mustela nivalis,0,100,0,0,0,0,0,0,0,0,1,0,0,103.88,Mustela nivalis,Mustela,Least Weasel,5.085,1.5,49.75,10,36.49,9.55,26,7.6274999999999995
+Myodes gapperi,20,0,0,0,0,0,0,0,30,50,1,1,1,19.83,Myodes gapperi,Myodes,Southern Red-backed Vole,5.205,2.555,22.8,2.408333333,17.97862,2.0375,10.9565,13.298775000000001
+Myodes rutilus,20,0,0,0,0,0,0,0,30,50,1,1,1,19.94,Myodes rutilus,Myodes,Northern Red-backed Vole,6.3,4,25,NA,23.70786,NA,11.1535,25.2
+Napaeozapus insignis,20,0,0,0,0,0,10,0,40,30,1,0,0,22.3,Napaeozapus insignis,Napaeozapus,Woodland Jumping Mouse,4.46,1.29,21.8,4,23.08286,4,9.4865,5.7534
+Neotoma albigula,10,0,0,0,0,0,0,0,20,70,1,0,0,206.03,Neotoma albigula,Neotoma,White-throated Woodrat,2.14,2,190.5,9.5,36.21884,7.7,19.5735,4.28
+Neotoma cinerea,10,0,0,0,0,0,0,0,20,70,1,0,0,299.15,Neotoma cinerea,Neotoma,Bushy-tailed Woodrat,3.565,1.75,285.89,5.825,29.75864,4.4125,22.698,6.23875
+Neotoma devia,10,0,0,0,0,0,0,0,20,70,1,0,0,200,Neotoma devia,Neotoma,Arizona Woodrat,2.81,3,113.4,10.5,33.2398,10.48333333,17.0865,8.43
+Neotoma floridana,10,0,0,0,0,0,0,0,20,70,1,0,0,244.75,Neotoma floridana,Neotoma,Eastern Woodrat,2.625,2.25,208.18,9.5,35.52942,7.7,21.4335,5.90625
+Neotoma lepida,10,0,0,0,0,0,0,0,20,70,1,0,0,163.75,Neotoma lepida,Neotoma,Desert Woodrat,2.92,3,113.4,10.5,33,10.48333333,17.0865,8.76
+Neotoma macrotis,10,0,0,0,0,0,0,0,20,70,1,0,0,225.74,Neotoma macrotis,Neotoma,Big-eared Woodrat,2.72,1.46,219.5,0.833333333,32.12736,0.833333333,21.819,3.9712
+Neotoma mexicana,10,0,0,0,0,0,0,0,20,70,1,0,0,203,Neotoma mexicana,Neotoma,Mexican Woodrat,2.345,2,203,0.666666667,33.19262,0.666666667,19.0565,4.69
+Neotoma micropus,10,0,0,0,0,0,0,0,20,70,1,0,0,237.5,Neotoma micropus,Neotoma,Southern Plains Woodrat,2.15,2,203.09,9.5,34.69704,7.683333333,21.268,4.3
+Neurotrichus gibbsii,90,0,0,0,0,0,0,0,0,10,1,1,1,8.9,Neurotrichus gibbsii,Neurotrichus,Shrew-mole,2.81,1,10,NA,21.27,NA,8.138,2.81
+Ochotona princeps,0,0,0,0,0,0,0,0,0,100,1,1,1,157.63,Ochotona princeps,Ochotona,American Pika,3,2.11,140.2,7.316666667,30.436,7,19,6.33
+Ochrotomys nuttalli,0,0,0,0,0,0,0,0,100,0,1,0,0,22.37,Ochrotomys nuttalli,Ochrotomys,Golden Mouse,2.65,4.2,22,8.416666667,29.0071,8.4,9.7,11.13
+Onychomys arenicola,90,0,0,0,0,0,0,0,0,10,1,0,0,30,Onychomys arenicola,Onychomys,Chihuahuan Grasshopper Mouse,3.665,2.55,24.96,5.6,30.5,4.6,11.523,9.345749999999999
+Onychomys leucogaster,90,0,0,0,0,0,0,0,0,10,1,0,0,27.92,Onychomys leucogaster,Onychomys,Northern Grasshopper Mouse,3.84,2.5,32.5,5.6,31.63,5,12.7,9.6
+Onychomys torridus,90,0,0,0,0,0,0,0,0,10,1,0,0,24.97,Onychomys torridus,Onychomys,Southern Grasshopper Mouse,3.665,2.55,22,5.6,30.5,4.8,10.346,9.345749999999999
+Oryzomys palustris,20,0,0,0,0,0,20,0,20,40,1,1,1,53.88,Oryzomys palustris,Oryzomys,Marsh Oryzomys,3.925,5.5,50.465,2.375,24.5444,1.895833333,14.175,21.5875
+Perognathus amplus,10,0,0,0,0,0,0,0,80,10,1,0,0,11.7,Perognathus amplus,Perognathus,Arizona Pocket Mouse,NA,NA,11.835,5.908333333,NA,5.904166667,NA,NA
+Perognathus fasciatus,10,0,0,0,0,0,0,0,80,10,1,0,0,11.55,Perognathus fasciatus,Perognathus,Olive-backed Pocket Mouse,4.99,1,11.42,NA,30.118,NA,7.967,4.99
+Perognathus flavescens,10,0,0,0,0,0,0,0,80,10,1,0,0,8.8,Perognathus flavescens,Perognathus,Plains Pocket Mouse,4.56,1.75,9.105,5,25.8706,3.083333333,6.929,7.9799999999999995
+Perognathus flavus,10,0,0,0,0,0,0,0,80,10,1,0,0,7.73,Perognathus flavus,Perognathus,Silky Pocket Mouse,4.185,1.665,7.97,5,25.63094,5,5.96,6.968025
+Perognathus inornatus,10,0,0,0,0,0,0,0,80,10,1,0,0,10.88,Perognathus inornatus,Perognathus,San Joaquin Pocket Mouse,4.45,1.33,8.575,8.333333333,22.74,8.3,7.223,5.918500000000001
+Perognathus longimembris,10,0,0,0,0,0,0,0,80,10,1,0,0,7.6,Perognathus longimembris,Perognathus,Little Pocket Mouse,4.45,1.25,8.35,8.333333333,22.74,8.3,NA,5.5625
+Perognathus parvus,10,0,0,0,0,0,0,0,80,10,1,0,0,21.78,Perognathus parvus,Perognathus,Great Basin Pocket Mouse,4.8,1.6,20.1,5.8,24,5.770833333,8.157,7.68
+Peromyscus attwateri,50,0,0,0,0,10,20,0,20,0,1,0,0,27.9,Peromyscus attwateri,Peromyscus,Texas Deermouse,3.5,3.7,28.3,5.4,27.5,2.1625,10.45,12.950000000000001
+Peromyscus boylii,50,0,0,0,0,10,20,0,20,0,1,0,0,21.35,Peromyscus boylii,Peromyscus,Brush Deermouse,3.185,4,23.9,1.5,24.95752,1.5,10.7,12.74
+Peromyscus californicus,50,0,0,0,0,10,20,0,20,0,1,0,0,43.53,Peromyscus californicus,Peromyscus,California Deermouse,2,4.56,45.5,5.5,30,5.454166667,11.65,9.12
+Peromyscus crinitus,50,0,0,0,0,10,20,0,20,0,1,0,0,17.98,Peromyscus crinitus,Peromyscus,Canyon Deermouse,3.08,2.05,16.33,7.7,24.95752,6.429166667,8.442,6.313999999999999
+Peromyscus eremicus,50,0,0,0,0,10,20,0,20,0,1,0,0,23.65,Peromyscus eremicus,Peromyscus,Cactus Deermouse,2.6,3.5,21.75,7.4,26,7.4,9.12,9.1
+Peromyscus gossypinus,50,0,0,0,0,10,20,0,20,0,1,0,0,29.39,Peromyscus gossypinus,Peromyscus,Cotton Deermouse,4.03,3.95,22.65,8,25.26188,5.533333333,10.2755,15.918500000000002
+Peromyscus keeni,50,0,0,0,0,10,20,0,20,0,1,0,0,28.25,Peromyscus keeni,Peromyscus,Northwestern Deermouse,4.73,3.2,22.05,8.333333333,26,7.95,9.8875,15.136000000000003
+Peromyscus leucopus,50,0,0,0,0,10,20,0,20,0,1,0,0,21.17,Peromyscus leucopus,Peromyscus,White-footed Deermouse,4.345,3.9,22.3,8,25.26188,7.9,10.0705,16.9455
+Peromyscus maniculatus,50,0,0,0,0,10,20,0,20,0,1,0,0,21.28,Peromyscus maniculatus,Peromyscus,North American Deermouse,4.615,3.55,20.5,8.333333333,26,7.95,9.8875,16.38325
+Peromyscus merriami,50,0,0,0,0,10,20,0,20,0,1,0,0,40,Peromyscus merriami,Peromyscus,Merriam's Deermouse,2.615,3.5,22,7.4,26,7.4,9.14,9.1525
+Peromyscus nasutus,50,0,0,0,0,10,20,0,20,0,1,0,0,28,Peromyscus nasutus,Peromyscus,Northern Rock Deermouse,3.69,3,28,5.4,30.13164,5.3625,10.2,11.07
+Peromyscus polionotus,50,0,0,0,0,10,20,0,20,0,1,0,0,12.95,Peromyscus polionotus,Peromyscus,Oldfield Deermouse,3.6,2.7,14,5.5,24,5.495833333,9.7,9.72
+Peromyscus truei,50,0,0,0,0,10,20,0,20,0,1,0,0,27.35,Peromyscus truei,Peromyscus,Pinon Deermouse,3.49,3.4,33,5.4,30.13164,5.3625,10.2,11.866
+Phenacomys intermedius,0,0,0,0,0,0,20,0,20,60,1,1,0,25.2,Phenacomys intermedius,Phenacomys,Western Heather Vole,4.62,2.65,25.2,4,22.01478,2.083333333,11.2335,12.243
+Podomys floridanus,30,0,0,0,0,0,0,0,40,30,1,0,0,30.8,Podomys floridanus,Podomys,Florida Deermouse,2.6,3.71,31.025,7.416666667,23.21786,7.4,11.509,9.646
+Rattus norvegicus,30,0,0,0,0,0,20,0,40,10,1,0,0,338.33,Rattus norvegicus,Rattus,Brown Rat,8.855,3.68,280,5,21.60956,5,30,32.586400000000005
+Rattus rattus,30,0,0,0,0,0,20,0,40,10,1,0,0,229.13,Rattus rattus,Rattus,Roof Rat,5.95,4.28,200,4.2,22.26132,4.2,20.199,25.466
+Reithrodontomys fulvescens,0,0,0,0,0,0,0,0,50,50,1,0,0,11.4,Reithrodontomys fulvescens,Reithrodontomys,Fulvous Harvest Mouse,3.1,2,12.5,1.75,NA,1.75,8.1,6.2
+Reithrodontomys humulis,0,0,0,0,0,0,0,0,50,50,1,0,0,8.31,Reithrodontomys humulis,Reithrodontomys,Eastern Harvest Mouse,2.945,3.65,9.275,2.25,22.0435,2.245416667,7.05,10.74925
+Reithrodontomys megalotis,0,0,0,0,0,0,0,0,50,50,1,0,0,9.37,Reithrodontomys megalotis,Reithrodontomys,Western Harvest Mouse,3.75,4.5,10.72,3.575,23.31568,2.5375,7.281,16.875
+Reithrodontomys montanus,0,0,0,0,0,0,0,0,50,50,1,0,0,10.9,Reithrodontomys montanus,Reithrodontomys,Plains Harvest Mouse,4.04,NA,9.95,NA,21.76132,NA,7.6,NA
+Sciurus carolinensis,0,0,0,0,0,0,20,0,50,30,0,0,1,506.5,Sciurus carolinensis,Sciurus,Eastern Gray Squirrel,3,2,540.33,24,44,23.58333333,31.5,6
+Sigmodon arizonae,50,0,0,0,0,0,0,0,0,50,1,1,1,198,Sigmodon arizonae,Sigmodon,Arizona Cotton Rat,5.44,2,172.3,5.2,27,5.183333333,20,10.88
+Sigmodon hispidus,50,0,0,0,0,0,0,0,0,50,1,1,1,92.38,Sigmodon hispidus,Sigmodon,Hispid Cotton Rat,5.44,2,159.6,5.2,27,5.2,18.525,10.88
+Sigmodon ochrognathus,50,0,0,0,0,0,0,0,0,50,1,1,1,122,Sigmodon ochrognathus,Sigmodon,Yellow-nosed Cotton Rat,5,2,145.85,5.2,27.08804,5.2,15.975,10
+Sorex arcticus,70,0,0,0,0,30,0,0,0,0,1,1,1,8.15,Sorex arcticus,Sorex,Arctic Shrew,6.63,1.9,8.195,1.5,17,1.5,7.563,12.597
+Sorex cinereus,70,0,0,0,0,30,0,0,0,0,1,1,1,4.66,Sorex cinereus,Sorex,Cinereus Shrew,6.5,1.9,5.1,2.5,18.11,1.625,6.928,12.35
+Sorex fumeus,70,0,0,0,0,30,0,0,0,0,1,1,1,7.7,Sorex fumeus,Sorex,Smoky Shrew,5.245,2.25,8.015,1.416666667,18.8699,1.270833333,7.4135,11.80125
+Sorex haydeni,70,0,0,0,0,30,0,0,0,0,1,1,1,3.5,Sorex haydeni,Sorex,Prairie Shrew,6.57,1.7,5,2.5,19.47904,1.625,6.928,11.169
+Sorex hoyi,70,0,0,0,0,30,0,0,0,0,1,1,1,2.58,Sorex hoyi,Sorex,American Pygmy Shrew,5.56,1,3.87,0.583333333,NA,0.583333333,5.8745,5.56
+Sorex longirostris,70,0,0,0,0,30,0,0,0,0,1,1,1,3.58,Sorex longirostris,Sorex,Southeastern Shrew,4.87,2,3.485,1.166666667,NA,1.166666667,5.732,9.74
+Sorex merriami,70,0,0,0,0,30,0,0,0,0,1,1,1,5.9,Sorex merriami,Sorex,Merriam's Shrew,6,NA,4.995,NA,NA,NA,6.1755,NA
+Sorex monticolus,70,0,0,0,0,30,0,0,0,0,1,1,1,5.25,Sorex monticolus,Sorex,Dusky Shrew,5.71,2,5.99,2.083333333,20.26106,1.5,6.7815,11.42
+Sorex nanus,70,0,0,0,0,30,0,0,0,0,1,1,1,2.4,Sorex nanus,Sorex,Dwarf Shrew,6.495,2,2.57,NA,NA,NA,5.648,12.99
+Sorex palustris,70,0,0,0,0,30,0,0,0,0,1,1,1,13.45,Sorex palustris,Sorex,American Water Shrew,5.58,2.5,12.77,1.5,21.9135,1.5,7.9764099999999996,13.95
+Sorex trowbridgii,70,0,0,0,0,30,0,0,0,0,1,1,1,3.8,Sorex trowbridgii,Sorex,Trowbridge's Shrew,4.155,1.75,4.73,1.5,NA,1.5,6.7555,7.27125
+Sorex tundrensis,70,0,0,0,0,30,0,0,0,0,1,1,1,7.73,Sorex tundrensis,Sorex,Tundra Shrew,6.69,1.9,8.19,1.5,17,1.5,7.506,12.711
+Sorex ugyunak,70,0,0,0,0,30,0,0,0,0,1,1,1,3.6,Sorex ugyunak,Sorex,Barren Ground Shrew,6.5,1.9,5.1,2.5,18.11,1.625,6.928,12.35
+Sorex vagrans,70,0,0,0,0,30,0,0,0,0,1,1,1,5.9,Sorex vagrans,Sorex,Vagrant Shrew,5.545,2,5.58,2.083333333,20.26106,1.5,6.7815,11.09
+Spermophilus armatus,20,0,0,0,0,0,0,0,40,40,0,0,1,313,Spermophilus armatus,Spermophilus,Uinta Ground Squirrel,5.45,1,310.4,7,24.04444,5,31.275,5.45
+Spermophilus beecheyi,20,0,0,0,0,0,0,0,40,40,0,0,1,578.5,Spermophilus beecheyi,Spermophilus,California Ground Squirrel,6.71,1,599.6,5.408333333,28.5,5.204166667,40.6,6.71
+Spermophilus franklinii,20,0,0,0,0,0,0,0,40,40,0,0,1,363,Spermophilus franklinii,Spermophilus,Franklin's Ground Squirrel,7.9,1,459,7.2,28,7.175,32.5805,7.9
+Spermophilus parryii,20,0,0,0,0,0,0,0,40,40,0,0,1,759.99,Spermophilus parryii,Spermophilus,Arctic Ground Squirrel,6.3,1,747.09,2.575,25.16,2.575,34.246,6.3
+Spermophilus richardsonii,20,0,0,0,0,0,0,0,40,40,0,0,1,406,Spermophilus richardsonii,Spermophilus,Richardson's Ground Squirrel,7.23,1,273.535,6,22.8,4.995833333,30.8485,7.23
+Spermophilus spilosoma,20,0,0,0,0,0,0,0,40,40,0,0,1,89,Spermophilus spilosoma,Spermophilus,Spotted Ground Squirrel,6.77,1.875,164.1,3.658333333,28,3.658333333,27.575,12.69375
+Spermophilus tereticaudus,20,0,0,0,0,0,0,0,40,40,0,0,1,156.5,Spermophilus tereticaudus,Spermophilus,Round-tailed Ground Squirrel,5.855,1,147.57,8.9,27.785,8.9,28.0265,5.855
+Spermophilus variegatus,20,0,0,0,0,0,0,0,40,40,0,0,1,691.64,Spermophilus variegatus,Spermophilus,Rock Squirrel,4.5,1.5,663.03,9.816666667,30,9.808333333,33.975,6.75
+Sylvilagus audubonii,0,0,0,0,0,0,0,0,0,100,1,1,0,889.63,Sylvilagus audubonii,Sylvilagus,Desert Cottontail,3,5,791.29,7.816666667,28.60984,7.808333333,35.262,15
+Sylvilagus floridanus,0,0,0,0,0,0,0,0,0,100,1,1,0,1172.79,Sylvilagus floridanus,Sylvilagus,Eastern Cottontail,5,3.9,1178.595,9.8,28.6962,9,40.05,19.5
+Sylvilagus nuttallii,0,0,0,0,0,0,0,0,0,100,1,1,0,755.09,Sylvilagus nuttallii,Sylvilagus,Mountain Cottontail,3.63,3.5,760,7.4,29.52292,7.4,34.223,12.705
+Synaptomys cooperi,20,0,0,0,0,0,0,0,0,80,1,1,1,31.92,Synaptomys cooperi,Synaptomys,Southern Bog Lemming,3.215,2.625,32.53,2.5,23.36786,2.5,11.775,8.439375
+Tamias alpinus,0,0,0,0,0,0,50,0,50,0,0,0,1,36.55,Tamias alpinus,Tamias,Alpine Chipmunk,4.5,NA,37.77,NA,NA,NA,13.2325,NA
+Tamias amoenus,0,0,0,0,0,0,50,0,50,0,0,0,1,50.5,Tamias amoenus,Tamias,Yellow-pine Chipmunk,5.19,1,54.2,5.166666667,29.828015,5.166666667,13.903,5.19
+Tamias dorsalis,0,0,0,0,0,0,50,0,50,0,0,0,1,71.1,Tamias dorsalis,Tamias,Cliff Chipmunk,5.13,1.5,62.8,12.6,29.75,12.57916667,14.269,7.695
+Tamias merriami,0,0,0,0,0,0,50,0,50,0,0,0,1,74.8,Tamias merriami,Tamias,Merriam's Chipmunk,4.11,NA,75.95,2.825,33.37,2.825,14.6975,NA
+Tamias minimus,0,0,0,0,0,0,50,0,50,0,0,0,1,135.27,Tamias minimus,Tamias,Least Chipmunk,4.95,1,44.975,10.15,29.52292,8.166666667,13.578,4.95
+Tamias quadrimaculatus,0,0,0,0,0,0,50,0,50,0,0,0,1,85.25,Tamias quadrimaculatus,Tamias,Long-eared Chipmunk,5.1,1,86.035,NA,31.34908,NA,15.006,5.1
+Tamias quadrivittatus,0,0,0,0,0,0,50,0,50,0,0,0,1,62.2,Tamias quadrivittatus,Tamias,Colorado Chipmunk,4.13,1.5,57.81,6.075,31.7,6.075,14.1205,6.195
+Tamias rufus,0,0,0,0,0,0,50,0,50,0,0,0,1,53.6,Tamias rufus,Tamias,Hopi Chipmunk,4.275,1,57.49,6.075,31.8289,6.075,14.1205,4.275
+Tamias speciosus,0,0,0,0,0,0,50,0,50,0,0,0,1,62,Tamias speciosus,Tamias,Lodgepole Chipmunk,4.145,1,59.065,6.075,31.6,6.075,12.469,4.145
+Tamias striatus,20,0,0,0,0,0,20,0,30,30,0,0,1,111.91,Tamias striatus,Tamias,Eastern Chipmunk,4.22,1.53,92.6,9.5,31.25,8.741666667,16.6235,6.4566
+Tamias townsendii,0,0,0,0,0,0,50,0,50,0,0,0,1,74.78,Tamias townsendii,Tamias,Townsend's Chipmunk,4.23,1,79.12,10.25,28,9.266666667,14.9615,4.23
+Tamias umbrinus,0,0,0,0,0,0,50,0,50,0,0,0,1,63,Tamias umbrinus,Tamias,Uinta Chipmunk,5.15,NA,51.75,7.316666667,NA,7.316666667,14.183,NA
+Tamiasciurus douglasii,0,20,0,0,10,0,20,10,20,20,0,0,1,225,Tamiasciurus douglasii,Tamiasciurus,Douglas's Squirrel,5.425,2,229.8,5.491666667,38.825,5.491666667,23,10.85
+Tamiasciurus hudsonicus,0,20,0,0,10,0,20,10,20,20,0,0,1,201.17,Tamiasciurus hudsonicus,Tamiasciurus,Red Squirrel,4.2,1.725,210.8,12,37,9.816666667,19,7.245000000000001
+Thomomys talpoides,0,0,0,0,0,0,0,0,0,100,1,1,0,130.08,Thomomys talpoides,Thomomys,Northern Pocket Gopher,4.975,1.065,101.12,6,22.73966,3.75,22.852,5.298374999999999
+Zapus hudsonius,20,0,0,0,0,0,10,0,70,0,1,0,0,17.12,Zapus hudsonius,Zapus,Meadow Jumping Mouse,5.36,2.07,23.8,5.6,19,5,9.7945,11.0952
+Zapus princeps,20,0,0,0,0,0,10,0,70,0,1,0,0,29,Zapus princeps,Zapus,Western Jumping Mouse,5.04,0.95,27.975,6,18.11,5,10.203,4.787999999999999
+Zapus trinotatus,20,0,0,0,0,0,10,0,70,0,1,0,0,27.5,Zapus trinotatus,Zapus,Pacific Jumping Mouse,5.3,1,27.325,6,18.2616,5,9.77,5.3
