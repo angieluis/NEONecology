@@ -27,7 +27,7 @@ plantsDD <- neonDivData::data_plant
 plant.sites <- sort(unique(plantsDD$siteID))
 plant.plots <- sort(unique(plantsDD$plotID))
 length(plant.plots)
-#1579
+#1580
 
 print(plantsDD %>%
   group_by(siteID) %>%
@@ -104,16 +104,14 @@ beetlesDD$trappingDays <- as.numeric(beetlesDD$trappingDays)
 # what does this mean? How should it be accounted for?
 
 length(unique(beetlesDD$taxon_name))
-# [1] 793 unique taxa
+# [1] 818 unique taxa
 
 dat <- beetlesDD %>%
   group_by(taxon_name,taxon_rank) %>%
   summarise(unique(taxon_id))
 summary(dat$taxon_rank)
-# family      genus        order      species speciesgroup speciesGroup    subfamily     subgenus 
-# 4           39            1          665            1            2            1           21 
-# subspecies  tribe 
-# 54            5 
+#family        genus        order      species speciesGroup    subfamily     subgenus   subspecies        tribe 
+#    4           41            1          686            4            1           21           55            5 
 
 # Clinidium apertum apertum ID'ed to subspecies but says genus, so change to subspecies
 beetlesDD$taxon_rank[which(beetlesDD$taxon_name=="Clinidium apertum apertum")] <- "subspecies"
@@ -176,14 +174,14 @@ birdsDD <- birdsDD %>%
 
 
 length(unique(birdsDD$taxon_name))
-# [1] 584 unique taxa
+# [1] 589 unique taxa
 
 dat <- birdsDD %>%
   group_by(taxon_name,taxon_rank) %>%
   summarise(unique(taxon_id))
 summary(dat$taxon_rank)
-# class       family      genus      species speciesGroup    subfamily   subspecies 
-# 1           16           16          539            3            1            8 
+# class       family        genus      species speciesGroup    subfamily   subspecies 
+#     1           16           17          543            3            1            8 
 
 
 #### First look, but will need to deal with sampling and ID issues:
@@ -238,8 +236,8 @@ dat <- smammalsDD %>%
   group_by(taxon_name,taxon_rank) %>%
   summarise(unique(taxon_id))
 summary(dat$taxon_rank)
-# genus    species subspecies 
-# 18        135          1 
+# genus    species  speciesGroup 
+#  11           76            5  
 
 ### First look at species richness
 smammalsdiversity_byplotdate <- smammalsDD %>%
@@ -406,6 +404,7 @@ save(tickPathogenStatus, file="TickPathogenStatus.RData")
 ## Raw data downloaded using neonUtilities
 ##############################################################################
 
+# downloaded through 2023 on 10.21.2025
 prod <- loadByProduct("DP1.10023.001", 
                        token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzI1NiJ9.eyJhdWQiOiJodHRwczovL2RhdGEubmVvbnNjaWVuY2Uub3JnL2FwaS92MC8iLCJzdWIiOiJhbmdlbGEubHVpc0B1bW9udGFuYS5lZHUiLCJzY29wZSI6InJhdGU6cHVibGljIiwiaXNzIjoiaHR0cHM6Ly9kYXRhLm5lb25zY2llbmNlLm9yZy8iLCJleHAiOjE4NzMwMzE4NjksImlhdCI6MTcxNTM1MTg2OSwiZW1haWwiOiJhbmdlbGEubHVpc0B1bW9udGFuYS5lZHUifQ.YLxLG3mCbxvV8RTI2amQFiOum--sxt5q5PgL4UIWaOnsILZTCu1kBRbAkoroYJEs5vNeDOI_6Tgk2913yV7NiA"
 )
@@ -466,7 +465,7 @@ ggplot(dat, aes(x = type, y = biomass, col=type)) +
 
 
 summary(factor(prod$hbp_perbout$exclosure))
-# some plots have an exclusores - to exclude cattle and were measured multiple times per year
+# some plots have  exclosures - to exclude cattle and were measured multiple times per year
 
 
 ##############################################################################
@@ -474,7 +473,7 @@ summary(factor(prod$hbp_perbout$exclosure))
 ##############################################################################
 
 plotsummary <- plantsDD %>%
-  group_by(plotID, siteID, latitude, longitude, elevation) %>%
+  group_by(plotID, siteID, latitude, longitude, elevation, nlcdClass) %>%
   summarise(num.days=length(unique(observation_datetime)), 
             num.plant.occ=length(unique(paste(year(observation_datetime),month(observation_datetime)))))
 
@@ -539,6 +538,7 @@ sort(unique(weather$wss_daily_temp$siteID))
 # Only done once - initial characterization
 ##############################################################################
 
+# downloaded on 10.21.2025 - but since only recorded once, not different from previous release
 soil <- loadByProduct("DP1.10047.001",
                       token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzI1NiJ9.eyJhdWQiOiJodHRwczovL2RhdGEubmVvbnNjaWVuY2Uub3JnL2FwaS92MC8iLCJzdWIiOiJhbmdlbGEubHVpc0B1bW9udGFuYS5lZHUiLCJzY29wZSI6InJhdGU6cHVibGljIiwiaXNzIjoiaHR0cHM6Ly9kYXRhLm5lb25zY2llbmNlLm9yZy8iLCJleHAiOjE4NzMwMzE4NjksImlhdCI6MTcxNTM1MTg2OSwiZW1haWwiOiJhbmdlbGEubHVpc0B1bW9udGFuYS5lZHUifQ.YLxLG3mCbxvV8RTI2amQFiOum--sxt5q5PgL4UIWaOnsILZTCu1kBRbAkoroYJEs5vNeDOI_6Tgk2913yV7NiA"
 )
@@ -616,25 +616,27 @@ write.csv(soil_periodic$sls_soilpH, file="SoilpHPeriodic.csv")
 ##############################################################################
 
 # they are redoing all their sequencing
-# release doesn't go through end of 2019
-# will download provisional 
+# release doesn't go as far as other data
+# will download provisional - it goes through end of 2024
 microbial <- loadByProduct("DP1.10108.001", include.provisional = TRUE,
                       token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzI1NiJ9.eyJhdWQiOiJodHRwczovL2RhdGEubmVvbnNjaWVuY2Uub3JnL2FwaS92MC8iLCJzdWIiOiJhbmdlbGEubHVpc0B1bW9udGFuYS5lZHUiLCJzY29wZSI6InJhdGU6cHVibGljIiwiaXNzIjoiaHR0cHM6Ly9kYXRhLm5lb25zY2llbmNlLm9yZy8iLCJleHAiOjE4NzMwMzE4NjksImlhdCI6MTcxNTM1MTg2OSwiZW1haWwiOiJhbmdlbGEubHVpc0B1bW9udGFuYS5lZHUifQ.YLxLG3mCbxvV8RTI2amQFiOum--sxt5q5PgL4UIWaOnsILZTCu1kBRbAkoroYJEs5vNeDOI_6Tgk2913yV7NiA"
 )
 
 
-
+save(microbial, file="RawMicrobialData.RData")
 
 ##############################################################################
 # Soil microbe biomass
 ##############################################################################
 
+# downloaded again 2025, 
 microbial.biomass.raw <- loadByProduct("DP1.10104.001", 
                            token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzI1NiJ9.eyJhdWQiOiJodHRwczovL2RhdGEubmVvbnNjaWVuY2Uub3JnL2FwaS92MC8iLCJzdWIiOiJhbmdlbGEubHVpc0B1bW9udGFuYS5lZHUiLCJzY29wZSI6InJhdGU6cHVibGljIiwiaXNzIjoiaHR0cHM6Ly9kYXRhLm5lb25zY2llbmNlLm9yZy8iLCJleHAiOjE4NzMwMzE4NjksImlhdCI6MTcxNTM1MTg2OSwiZW1haWwiOiJhbmdlbGEubHVpc0B1bW9udGFuYS5lZHUifQ.YLxLG3mCbxvV8RTI2amQFiOum--sxt5q5PgL4UIWaOnsILZTCu1kBRbAkoroYJEs5vNeDOI_6Tgk2913yV7NiA"
 )
 
 names(microbial.biomass.raw)
 # scaled and not scaled dataframes. not sure what we want
+# unscaled goes through 2021, scaled goes through 2023
 
 # are they the same samples? some.
 summary(microbial.biomass.raw$sme_microbialBiomass$sampleID %in% 
@@ -644,7 +646,7 @@ summary(microbial.biomass.raw$sme_microbialBiomass$sampleID %in%
 summary(microbial.biomass.raw$sme_scaledMicrobialBiomass$sampleID %in%
           microbial.biomass.raw$sme_microbialBiomass$sampleID)
 #    Mode   FALSE    TRUE 
-# logical    2326    4741 
+# logical    4523    4741 
 
 write_csv(microbial.biomass.raw$sme_microbialBiomass, file="MicrobialBiomass.csv")
 write_csv(microbial.biomass.raw$sme_scaledMicrobialBiomass, file="ScaledMicrobialBiomass.csv")
@@ -856,9 +858,9 @@ daymet.info.plot <- plotsummary[,c(1,3,4)]
 
 
 # https://daymet.ornl.gov/overview 
-write.csv(daymet.info.plot,file="NEONdaymetPlotinfo.csv",row.names = FALSE)
-df_batch <- download_daymet_batch(file_location = "NEONdaymetPlotinfo.csv", 
-                                  start = 2013, end = 2021, simplify = TRUE)
+write.csv(daymet.info.plot,file="NEONdaymetPlotinfo2.csv",row.names = FALSE)
+df_batch <- download_daymet_batch(file_location = "NEONdaymetPlotinfo2.csv", 
+                                  start = 2013, end = 2023, simplify = TRUE)
 head(df_batch)
 
 unique(df_batch$measurement)
@@ -877,6 +879,17 @@ daymetPlotmeans <- pivot_wider(daymetPlotsummaries.long,
                                values_from = mean)
 
 write.csv(daymetPlotmeans, file="DaymetPlotEnvDataMeans.csv", row.names = F)
+
+# monthly means
+daymetPlotmonthlymeans.long <- df_batch %>%
+  group_by(plotID,year,month,measurement) %>%
+  summarise(mean = mean(value))
+
+daymetPlotmonthlymeans <- pivot_wider(daymetPlotmonthlymeans.long,
+                                      names_from = measurement,
+                                      values_from = mean)
+
+write.csv(daymetPlotmonthlymeans, file="DaymetPlotEnvDataMonthlyMeans.csv", row.names = F)
 
 # Day length	dayl	s/day	Duration of the daylight period in seconds per day. 
 # This calculation is based on the period of the day during which the sun is above 
@@ -901,6 +914,13 @@ library(daymetr)
 daymet.micro.plots <- soil.periodic.merge %>%
   dplyr::select(siteID, plotID, nlcdClass, decimalLatitude, decimalLongitude, elevation) %>%
   distinct()
+# 6 plotIDs have 2 lat,long,elevations (really close tho). I will just use the first value.
+daymet.micro.plots <- soil.periodic.merge %>%
+  group_by(siteID, plotID) %>%
+  summarise(nlcdClass = nlcdClass[1], 
+            decimalLatitude = decimalLatitude[1], 
+            decimalLongitude = decimalLongitude[1], 
+            elevation = elevation[1])
 
 daymet.batchplots <- daymet.micro.plots[,c(2,4,5)]
 
@@ -908,7 +928,7 @@ daymet.batchplots <- daymet.micro.plots[,c(2,4,5)]
 # https://daymet.ornl.gov/overview 
 write.csv(daymet.batchplots,file="NEONdaymetMicroPlotinfo.csv",row.names = FALSE)
 daymetsoilplots <- download_daymet_batch(file_location = "NEONdaymetMicroPlotinfo.csv", 
-                                  start = 2018, end = 2022, simplify = TRUE)
+                                  start = 2012, end = 2023, simplify = TRUE) # start a year before because doing rolling means up to 1 year
 head(daymetsoilplots)
 
 unique(daymetsoilplots$measurement)
@@ -919,7 +939,7 @@ daymetsoilplots$month <- month(daymetsoilplots$date)
 names(daymetsoilplots)[1] <- "plotID"
 
 daymetsoilplots.sums <- daymetsoilplots %>%
-  pivot_wider(names_from = measurement, values_from = value) %>%
+  pivot_wider(id_cols = c(plotID,date,year,month), names_from = measurement, values_from = value) %>%
   mutate(temp = (tmax..deg.c. + tmin..deg.c.)/2) %>%
   mutate(temp.14days = zoo::rollapply(temp, 14, mean, align="right", fill=NA),
          temp.30days = zoo::rollapply(temp, 30, mean, align="right", fill=NA),
