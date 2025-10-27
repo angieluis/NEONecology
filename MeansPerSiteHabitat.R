@@ -6,7 +6,7 @@
 # and why not just matching by plot (don't match up)
 
 setwd("~/Documents/NEON data/NEONecology")
-load("ReducedMergedPlantSoilData.RData")
+load("ReducedMergedData.RData")
 load("SmammalSpeciesEstimates.RData")
 
 library(tidyverse)
@@ -18,7 +18,7 @@ library(tigris)
 library(data.table)
 library(iNEXT)
 
-source("~/Documents/R Files/Numerical Ecology with R-2ed/NEwR2-Functions/panelutils.R")
+source("FunctionsForNEONdata.R")
 
 
 ###############################################################################
@@ -115,9 +115,9 @@ x <- reduced.plant.cover %>%
   group_by(plotID, year = year(observation_datetime)) %>%
   summarise(n = length(unique(observation_datetime)))
 summary(factor(x$n))
-#    1    2    3    4 
-# 2883  610   42    3 
-# most plots have one date per year but some have up to 4.
+# 1    2    3    4    5    6 
+# 6532 1467  130   30    4    1
+# most plots have one date per year but some have up to 6.
 # for those that are more than one are they considered different bouts?
 
 
@@ -127,7 +127,7 @@ plant.cover.subsubplotsitehabitat.date <- reduced.plant.cover %>%
          taxon_rank == "species" | 
            taxon_rank == "subspecies" | 
            taxon_rank == "variety") %>% ## only using those IDed to species
-  select(siteID, plotID, subplotID, nlcdClass, observation_datetime, taxon_rank, species, percent_cover) %>% 
+  dplyr::select(siteID, plotID, subplotID, nlcdClass, observation_datetime, taxon_rank, species, percent_cover) %>% 
   ### need to first sum percent cover over each species because some subspecies, varieties were separated
   group_by(siteID, plotID, subplotID, nlcdClass, observation_datetime, species) %>% 
   summarise(percent_cover = sum(percent_cover)) %>%
@@ -198,6 +198,15 @@ sm.plot.info <- plot.info %>%
   filter(str_detect(location_id,"mammalGrid"))
 smammal.species.estimates.longdata <- left_join(smammal.species.estimates.longdata,
                                                 sm.plot.info[,c("siteID","plotID","nlcdClass")] )
+
+# site.habitat.peakDate <- productivity.persample %>%
+#   group_by(siteID, nlcdClass) %>%
+#   summarise(peakdate = unique(format(as.Date(peak.date), "%m-%d")))
+# # for a given site, the dates between habitats are similar. 
+# # So to fill in the missing ones take the mean of the other habitats at that site
+# site.peakDate <- site.habitat.peakDate %>%
+#   group_by(siteID) %>%
+#   summarise(site.peakdate = format(mean(mdy(paste(peakdate, 2019, sep="-") )), "%m-%d")) 
 
 # add columns for different productivity windows
 smammal.species.estimates.longdata <- left_join(left_join(smammal.species.estimates.longdata %>%
@@ -333,7 +342,8 @@ beetles.sitehabitatyear <- beetle.plot.date %>%
 
 #------------------------------------------------------------------------------#
 
-  
+save(plant.cover.sitehabitatyear, plant.biomass.sitehabitatyear,
+     smammal.sitehabitatyear,beetles.sitehabitatyear, file="SitehabitatYear4moData.RData")
 
 ############################################################################
 ## below is from before - need to update
