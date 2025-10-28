@@ -66,8 +66,8 @@ prod$hbp_perbout[which(prod$hbp_perbout$clipLength*prod$hbp_perbout$clipWidth!=p
 
 
 # first join the perbout info and the mass info by sampleID so just 1 dataframe
-prod.mass <- as.tibble(prod$hbp_massdata)
-prod.perbout <- as.tibble(prod$hbp_perbout)
+prod.mass <- as_tibble(prod$hbp_massdata)
+prod.perbout <- as_tibble(prod$hbp_perbout)
 
 # change some columns to factors
 prod.mass <- prod.mass %>%
@@ -239,7 +239,7 @@ reduced.plant.cover <- left_join(left_join(reduced.plant.cover %>%
 
 
 summary(reduced.plant.cover$peak.window.4mo)
-#      N      Y 
+ #      N      Y 
 # 226003 820264 
 
 # How many additional site-habitats will be missing if we reduce to within the peak window?
@@ -390,7 +390,7 @@ names(microbial)
 # [11] "validation_10108"                 "variables_10108"                 
 
 summary(microbial$mmg_soilMarkerGeneSequencing_ITS$collectDate)
-# 2013-06-27 to 2024-11-21
+# 2013-06-27 to 2024-11-21 #2024 is provisional - filter out below
 
 # before some rows in mmg_soilMarkerGeneSequencing_ITS were duplicated, with latest release ok
 dim(microbial$mmg_soilMarkerGeneSequencing_ITS)
@@ -406,11 +406,11 @@ microbe.ITS <- as_tibble(microbial$mmg_soilMarkerGeneSequencing_ITS) %>%
                                  function(x){paste(str_split_1(x,pattern="-GEN")[1], 
                                                    "-GEN", sep ="")}))) %>%    #str_sub(dnaSampleID, 1, -6)) %>% 
   mutate_at(vars(domainID, siteID, plotID, qaqcStatus), factor) %>%
-  filter(year(collectDate)>2018,
+  filter(year(collectDate)>2018, year(collectDate)<2024,
          qaqcStatus == "Pass", # only keep those that pass qaqc (this removed 150 that failed)
          grepl("COMP", dnaSampleID)==F ) %>% # removed the one dnaSampleID with "COMP" 
   # in it because that means it was pooled and there were other IDs with that plot-date
-  select(c("siteID", "plotID", "geneticSampleID", "collectDate", "processedDate", "dnaSampleID",
+  select(c("siteID", "plotID", "geneticSampleID", "internalLabID","collectDate", "processedDate", "dnaSampleID",
          "linkerPrimerSequence",	"reverseLinkerPrimerSequence", "illuminaIndex1",	
          "illuminaIndex2", "sampleTotalReadNumber",	"sampleFilteredReadNumber",	
          "minFilteredReadLength",	"maxFilteredReadLength", "sequencerRunID",  
@@ -422,23 +422,23 @@ l.gen <- unlist(lapply(as.list(microbe.ITS$geneticSampleID),
                        function(x){length(str_split_1(x,pattern="-"))}))
 summary(factor(l.gen))
 # 5    6 
-# 5153 5131 
+# 3844 5131 
 # string of length both 5 and 6 are normal
 
 ls <- unlist(lapply(as.list(microbe.ITS$geneticSampleID), function(x){length(which(microbe.ITS$geneticSampleID==x))}))
 summary(factor(ls))
 #     1     2 
-# 10170   114 
-# only 1 row per geneticSampleID for most but 114 have duplicated geneticSampleID.
-
+# 8865   110 
+# only 1 row per geneticSampleID for most but 110 have duplicated geneticSampleID.
+ls <- unlist(lapply(as.list(microbe.ITS$internalLabID), function(x){length(which(microbe.ITS$internalLabID==x))}))
+summary(factor(ls))
+# internalLabID is unique - This is how the sequence data are IDed
 
 gs <- soil.periodic.merge$geneticSampleID[which(!is.na(soil.periodic.merge$geneticSampleID))]
 summary(microbe.ITS$geneticSampleID %in% gs)
-# Mode      FALSE    TRUE 
-# logical    1309    8975 
-# not all the microbial samples are in the soil.periodic.merge data - but it 
-# only goes through 2023 but microbial goes through 2024 (provisional)
-# When both went through 2022, they all matched up
+# Mode          TRUE 
+# logical       8975 
+
 
 
 microbe.ITS.metadata <- left_join(microbe.ITS, soil.cores)
@@ -447,7 +447,7 @@ microbe.ITS.metadata <- left_join(microbe.ITS, soil.cores)
 length(unique(soil.periodic.merge$geneticSampleID))
 length(unique(microbe.ITS$geneticSampleID))
 
-# add to soil.periodic.merge whether there the geneticSampleID is in the 
+# add to soil.periodic.merge whether the geneticSampleID is in the 
 # microbe.ITS and qaqc for it.
 soil.periodic.merge <- left_join(soil.periodic.merge,
                                  microbe.ITS.metadata %>%
@@ -490,7 +490,7 @@ summary(soil.periodic.merge$peak.window.3mo)
 summary(soil.periodic.merge$peak.window.4mo)
 #     N     Y  NA's 
 # 19278 16408  2925 
-# NAs are the ones that don't have peak date because only include the nlcdClasses we eliminated
+# NAs are the ones that don't have peak date because they are the nlcdClasses we eliminated
 
 # How many site-habitats will be missing if we reduce to within the peak window?
 sort(unique(paste(soil.periodic.merge$siteID[which(soil.periodic.merge$peak.window.4mo=="N")],
@@ -509,6 +509,11 @@ microbe.ITS.metadata <- left_join(microbe.ITS.metadata %>%
                                                        peak.date, units="days"))<46 , "Y", "N")),
          peak.window.4mo = factor(if_else(abs(difftime(ymd(collectDate), 
                                                        peak.date, units="days"))<62 , "Y", "N")))
+# 918 failed to parse
+summary(microbe.ITS.metadata$nlcdClass[which(is.na(microbe.ITS.metadata$peak.date))])
+# the ones that failed to parse are the habitats we eliminated (crops,wetlands,hay)
+
+
 summary(microbe.ITS.metadata$peak.window.4mo)
 # removes 1/2 of data
 
@@ -650,7 +655,7 @@ length(which(!is.na(x$n.dates)))
 reduced.microbe.ITS.metadata <- x[which(!is.na(x$n.dates)),-(4:5)]
 # this includes all mineral and organic horizons - not sure if we want that.
 
-write_csv(reduced.microbe.ITS.metadata, "ReducedMicrobeITSmetadata.csv")
+# write_csv(reduced.microbe.ITS.metadata, "ReducedMicrobeITSmetadata.csv")
 
 ###############################################################################
 # Microbial Biomass Sampling
@@ -672,10 +677,10 @@ summary(scaledIDs %in% unscaledIDs )
 
 summary(scaledIDs %in% soil.periodic.merge$biomassID)
 # Mode    TRUE 
-# logical    9259 
+# logical    9259 # all the scaled ID are in the soil period data - use this.
 summary(unscaledIDs %in% soil.periodic.merge$biomassID)
 # Mode    TRUE 
-# logical    5849 
+# logical    5849 # all the unscaled are in there but fewer of them
 
 dim(microbial.biomass.raw$sme_scaledMicrobialBiomass)
 length(scaledIDs)
@@ -699,24 +704,27 @@ summary(unique(microbial.biomass.scaled$biomassID) %in% soil.periodic.merge$biom
 # all there
 
 soil.periodic.merge <- left_join(soil.periodic.merge, microbial.biomass.scaled)
+microbe.ITS.metadata <- left_join(microbe.ITS.metadata,microbial.biomass.scaled )
+
 
 ######## bring in daymet environmental data :
 #load("daymetSoilSums.RData")
 soil.periodic.merge <- left_join(soil.periodic.merge, daymetsoilplots.sums[,c(1,2,12:18)], by = join_by(plotID == plotID, collectDate == date))
-
+microbe.ITS.metadata <- left_join(microbe.ITS.metadata, daymetsoilplots.sums[,c(1,2,12:18)], by = join_by(plotID == plotID, collectDate == date))
 #write_csv(soil.periodic.merge, file="soilPeriodicMerge.csv")
 ##############################################################################
 # Lorinda merged metadata with her sequence numbers. a few are missing.
 # probably need to update this - talk to Lorinda
-sequenced.metadata <- read.csv("Merged_Neon_Microbial_metadata.csv")
-sequenced.metadata$collectDate <- as.Date(sequenced.metadata$collectDate)
-IDs <- sequenced.metadata$geneticSampleID[which(is.na(sequenced.metadata$coreCoordinateX))]
-# they are the habitat types we eliminated: wetlands and ag
+# sequenced.metadata <- read.csv("Merged_Neon_Microbial_metadata.csv")
+# sequenced.metadata$collectDate <- as.Date(sequenced.metadata$collectDate)
+# IDs <- sequenced.metadata$geneticSampleID[which(is.na(sequenced.metadata$coreCoordinateX))]
+# # they are the habitat types we eliminated: wetlands and ag
+# 
+# sequenced.metadata <- left_join(sequenced.metadata, 
+#                                 daymetsoilplots.sums[,c(1,2,12:18)], 
+#                                 by = join_by(plotID == plotID, collectDate == date))
 
-sequenced.metadata <- left_join(sequenced.metadata, 
-                                daymetsoilplots.sums[,c(1,2,12:18)], 
-                                by = join_by(plotID == plotID, collectDate == date))
-          
+
 ###############################################################################
 # Initial Soil Characterization
 ###############################################################################
@@ -772,7 +780,7 @@ soil.initial.biogeochem <-as.tibble(soil$spc_biogeochem) %>%
                               
 
 dim(soil.initial.biogeochem)
-# [1] 3037   60
+# [1] 3037   39
 length(unique(soil.initial.biogeochem$horizonID ))
 # 3037
 # no duplicates
@@ -843,7 +851,7 @@ soil.initial <- soil.initial %>%
 #584 plots with initial soil samples
 #343 plots with microbe ITS data
 summary(unique(microbe.ITS.metadata$plotID) %in% unique(soil.initial$plotID))
-# 208 of which are the same plots in the initial soil sample 
+# 149 of which are the same plots in the initial soil sample 
 
 # e.g., ABBY_070 has 8 microbial samples
 
@@ -885,17 +893,18 @@ for(i in 1:dim(microbe.ITS.metadata)[1]){
 # if want total overlap - lots of 0s
 summary(soil.horizon.lineup$n.initial.horizons.total)
 #   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-# 0.0000  0.0000  0.0000  0.9465  1.0000 18.0000 
+# 0.0000  0.0000  0.0000  1.085  1.0000 18.0000 
 length(which(soil.horizon.lineup$n.initial.horizons.total==0))
-# 7072 out of 10284
+# 5763 out of 10284
 
 # if want any overlap:
 summary(soil.horizon.lineup$n.initial.horizons.any)
 # Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-# 0.00    4.00   14.00   16.34   26.00   49.00 
+# 0.00    9.00   16.00   18.72   28.00   49.00  
 length(which(soil.horizon.lineup$n.initial.horizons.any==0))
-# 2210 out of 10284 don't overlap at all.
+# 901 out of 10284 don't overlap at all.
 
+######## May want to take closest value? HAven't done that.
 
 # ----------------------------------------------------------------------------#
 
@@ -909,7 +918,7 @@ length(which(soil.horizon.lineup$n.initial.horizons.any==0))
 # and have removed nlcdClasses for other data - remove here
 
 microbe.ITS.metadata <- microbe.ITS.metadata %>%
-  filter(year(collectDate)<2024) %>%
+  #filter(year(collectDate)<2024) %>%
   filter(nlcdClass != "cultivatedCrops" & nlcdClass !="pastureHay" & 
            nlcdClass !="emergentHerbaceousWetlands" & nlcdClass !="woodyWetlands")
 
@@ -947,6 +956,8 @@ for(i in 1:dim(microbe.ITS.metadata)[1]){
 length(which(unlist(lapply(soilhorizon.periodictoinitial,length))==0))
 # 124 have no overlap 
 
+#### Might want to find the closest?
+
 ##################### Quality Control
 # which(unlist(lapply(soilhorizon.periodictoinitial,length))==0)
 # i=2138 # this one had no overlap, but does it really?
@@ -965,10 +976,18 @@ length(which(unlist(lapply(soilhorizon.periodictoinitial,length))==0))
 ####### average initial soil variables for any horizon in that site-habitat
 # that overlaps with microbial sampling --------------------------------------#
 
-scols <- c(33,36:71)
-microbe.ITS.metadata.initial.soils <- data.frame(microbe.ITS.metadata[,c(1:4,37,38)], # columns in microbe.ITS.metadata to match by (top and bottom depth)
-                                                 soil.initial[dim(microbe.ITS.metadata)[1],scols]) # add the column names and NA
-mcols <- 7:43 # which columns to put the new averages in
+scols <- #c(33,36:71)
+ c("gypsumConc","caco3Conc","caNh4d","kNh4d","mgNh4d","naNh4d","cecdNh4","alSatCecd33",
+ "baseSumCecd10","bsesatCecd10", "alKcl","feKcl","mnKcl","phCacl2","phH2o",              
+ "carbonTot","nitrogenTot","ctonRatio","estimatedOC","sulfurTot", "alOxalate",
+ "feOxalate","mnOxalate","pOxalate","siOxalate","acidity","MehlichIIITotP","Bray1PExtractable",
+ "OlsenPExtractable","bulkDensTopDepth","bulkDensBottomDepth", "bulkDensCenterDepth",
+ "bulkDensOvenDry","bulkDensFieldMoist","sandTotal","siltTotal","clayTotal")
+scols <- match(scols,names(soil.initial))
+microbe.ITS.metadata.initial.soils <- 
+  data.frame(microbe.ITS.metadata[,c("siteID","plotID","geneticSampleID","collectDate","sampleTopDepth","sampleBottomDepth")], # columns in microbe.ITS.metadata to match by )
+              soil.initial[dim(microbe.ITS.metadata)[1],scols]) # add the column names and NA
+mcols <- 7:(dim(microbe.ITS.metadata.initial.soils)[2]) # which columns to put the new averages in
 
 for(r in 1:dim(microbe.ITS.metadata.initial.soils)[1]){
   
@@ -986,13 +1005,13 @@ length(which(apply(microbe.ITS.metadata.initial.soils[,7:43], 1, sum, na.rm=T)==
 #  some site-habitat-horizons were sampled more than once.
 # so each row isn't independent
 
-write.csv(microbe.ITS.metadata.initial.soils, file="MicrobeMetadataInitialSoils.csv")
+#write.csv(microbe.ITS.metadata.initial.soils, file="MicrobeMetadataInitialSoils.csv")
 
-sequenced.metadata <- left_join(sequenced.metadata, microbe.ITS.metadata.initial.soils)
-write.csv(sequenced.metadata, file="SequencedMetadata.csv")
-save(sequenced.metadata, file="SequencedMetadata.RData")
+microbe.ITS.metadata <- left_join(microbe.ITS.metadata, microbe.ITS.metadata.initial.soils)
+write.csv(microbe.ITS.metadata, file="MicrobeITSMetadata.csv")
+save(microbe.ITS.metadata, file="MicrobeITSMetadata.RData")
 
-### make sure all initial soil data are in here including texture and bulk density
+
 
 
 ###############################################################################
