@@ -93,25 +93,17 @@ productivity <- left_join(prod.mass %>%
 
 summary(productivity)
 
-
-# Reduced Data ---------------------------------------------------------------#
-# removing nlcdClass==cultivatedCrops; pastureHay, emergentHerbaceousWetlands,
-# woodyWetlands
-# for a lot of analyses we will just use 2019 onwards but remove those later--#
-
-productivity <- productivity %>%
-  filter(nlcdClass != "cultivatedCrops" & nlcdClass !="pastureHay" & 
-           nlcdClass !="emergentHerbaceousWetlands" & nlcdClass !="woodyWetlands") #,
-         #year(collectDate)>2018) 
-
-
-productivity[productivity$clipArea!=0.2,]
-# leaves 2 KONZ samples that has clipArea==1. 
-# Remove it.
-productivity <- productivity %>%
-  filter(clipArea == 0.2)
-
-# now 70631 rows of data
+# when interested in productivity, if the clip areas are not the same, then
+# they won't be comparable. Most have clipArea==0.2, but some don't.
+summary(productivity$nlcdClass[productivity$clipArea!=0.2])
+# cultivatedCrops            deciduousForest                 dwarfScrub emergentHerbaceousWetlands 
+#            2849                          0                          0                          0 
+# evergreenForest        grasslandHerbaceous                mixedForest                 pastureHay 
+#               0                          2                          0                         34 
+# sedgeHerbaceous                 shrubScrub              woodyWetlands 
+#               0                          0                          0 
+## most that aren't are cultivated crops or pasture hay, which we will eliminate from some analyses
+## but a few are grassland -- it is 2 KONZ samples that have clipArea==1. -- remove those
 
 
 
@@ -124,8 +116,11 @@ productivity <- productivity %>%
 # Data is now per sampleID
 # adding column for the date peak biomass was recorded and if the row's date
 # is within x month(s) of the peak date
+# reduce to those with clipArea==0.2
+
 
 productivity.persample <-  productivity %>%
+  filter(clipArea==0.2) %>%
   # first group by subsampleID and take mean (because sometimes weighed twice for qa)
   group_by(siteID, nlcdClass, collectDate, year=year(collectDate), plotID, 
            sampleID, subsampleID, subplotID, plotType, plotSize, plotManagement, clipArea, 
@@ -151,16 +146,14 @@ productivity.persample <-  productivity %>%
          # 4 month window
 
 summary(productivity.persample$peak.window.2mo)
-#    N    Y 
-# 5290 10917  
-# removes about a quarter of the data
+#    N     Y 
+# 7645 12162  
 summary(productivity.persample$peak.window.3mo)
-#    N    Y 
-# 3978 12229  
+#    N     Y 
+# 6227 13580  
 summary(productivity.persample$peak.window.4mo)
-#   N    Y 
-# 2999 13208 
-
+#    N     Y 
+# 4915 14892
 
 save(productivity.persample, file="PlantProductivity.RData")
 
@@ -171,13 +164,10 @@ save(productivity.persample, file="PlantProductivity.RData")
 ###############################################################################
 
 
-# Reduced Data ---------------------------------------------------------------#
-# removing nlcdClass==cultivatedCrops; pastureHay, emergentHerbaceousWetlands,
-# woodyWetlands
 
-plant.cover <- plantsDD %>%
-  filter(nlcdClass != "cultivatedCrops" & nlcdClass !="pastureHay" & 
-           nlcdClass !="emergentHerbaceousWetlands" & nlcdClass !="woodyWetlands") #,
+plant.cover <- plantsDD #%>%
+  # filter(nlcdClass != "cultivatedCrops" & nlcdClass !="pastureHay" & 
+  #          nlcdClass !="emergentHerbaceousWetlands" & nlcdClass !="woodyWetlands") #,
          #year(observation_datetime)>2018) 
 
 
@@ -189,8 +179,8 @@ plant.cover <- plant.cover %>%
 
 # <---------------------------------------------------------------------------#
 # See "ExploringSampling.Rmd"
-# found that 7% of the plot-years don't have 6 1m^2 pots. Remove them.
-
+# quite a few of the plot-years don't have 6 1m^2 pots. Remove them.
+# when don't remove some nlcdClasses, quite a few have 8 plots
 plant.1mplotyears <- plant.cover[grep("_1_",plant.cover$subplotID),] %>%
   group_by(siteID, plotID, year=year(observation_datetime)) %>%
   summarise(num.1m2.plots=length(unique(subplotID)))
@@ -239,13 +229,13 @@ reduced.plant.cover <- left_join(left_join(reduced.plant.cover %>%
 
 
 summary(reduced.plant.cover$peak.window.4mo)
- #      N      Y 
-# 226003 820264 
+#      N      Y 
+# 284727 960187 
 
 # How many additional site-habitats will be missing if we reduce to within the peak window?
 sort(unique(paste(reduced.plant.cover$siteID[which(reduced.plant.cover$peak.window.4mo=="N")],
                   reduced.plant.cover$nlcdClass[which(reduced.plant.cover$peak.window.4mo=="N")])))
-## Lots!!! 49 site-habitats will be removed if use 4 month window
+## Lots!!! 66 site-habitats will be removed if use 4 month window
 
 
  
@@ -367,10 +357,6 @@ length(which(!is.na(soil.periodic.merge$biomassID)))
 
 
 
-
-
-
-
  
 ###############################################################################
 # Microbial Sequencing Sampling
@@ -456,17 +442,7 @@ names(soil.periodic.merge)[which(names(soil.periodic.merge)=="qaqcStatus")] <- "
 soil.periodic.merge$ITS.sequence = factor(ifelse(is.na(soil.periodic.merge$ITS.qaqcStatus), "N", "Y"))
 
 
-### Remove crops, pasture, wetlands -----------------------------------------#
-# lorinda downloaded all the data, so don't subset until specific analyses
-# soil.periodic.merge <- soil.periodic.merge %>%
-#   filter(nlcdClass != "cultivatedCrops" & nlcdClass !="pastureHay" & 
-#            nlcdClass !="emergentHerbaceousWetlands" & nlcdClass !="woodyWetlands")
-# 
-# microbe.ITS.metadata <- microbe.ITS.metadata %>%
-#   filter(nlcdClass != "cultivatedCrops" & nlcdClass !="pastureHay" & 
-#            nlcdClass !="emergentHerbaceousWetlands" & nlcdClass !="woodyWetlands")
 
-  
 ### Indicate peak biomass date windows for later subsetting -----------------#
 
 
@@ -474,7 +450,7 @@ soil.periodic.merge <- left_join(left_join(soil.periodic.merge %>%
                                    mutate(year = year(collectDate))
                                  , site.habitat.peakDate),
                                   site.peakDate) %>%
-  mutate(peak.date = mdy(paste(if_else(is.na(peakdate), site.peakdate, peakdate), year, sep="-")), ## DSNY KONA STER not in peakdate - they only have those habitat types we are eliminating
+  mutate(peak.date = mdy(paste(if_else(is.na(peakdate), site.peakdate, peakdate), year, sep="-")), 
          peak.window.2mo = factor(if_else(abs(difftime(ymd(collectDate), 
                                                    peak.date, units="days"))<32 , "Y", "N")),
          peak.window.3mo = factor(if_else(abs(difftime(ymd(collectDate), 
@@ -482,15 +458,15 @@ soil.periodic.merge <- left_join(left_join(soil.periodic.merge %>%
          peak.window.4mo = factor(if_else(abs(difftime(ymd(collectDate), 
                                                        peak.date, units="days"))<62 , "Y", "N")))
 summary(soil.periodic.merge$peak.window.2mo)
-#    N     Y  NA's 
-#26380  9306  2925 
+#    N     Y   
+#28693  9918    
 summary(soil.periodic.merge$peak.window.3mo)
-#     N     Y  NA's 
-# 23105 12581  2925 
+#    N     Y 
+# 24941 13670
 summary(soil.periodic.merge$peak.window.4mo)
-#     N     Y  NA's 
-# 19278 16408  2925 
-# NAs are the ones that don't have peak date because they are the nlcdClasses we eliminated
+#     N     Y 
+# 21084 17527  
+
 
 # How many site-habitats will be missing if we reduce to within the peak window?
 sort(unique(paste(soil.periodic.merge$siteID[which(soil.periodic.merge$peak.window.4mo=="N")],
@@ -499,19 +475,17 @@ sort(unique(paste(soil.periodic.merge$siteID[which(soil.periodic.merge$peak.wind
 
 
 
-microbe.ITS.metadata <- left_join(microbe.ITS.metadata %>%
+microbe.ITS.metadata <- left_join(left_join(microbe.ITS.metadata %>%
                                    mutate(year = year(collectDate))
-                                 , site.habitat.peakDate) %>%
-  mutate(peak.date = mdy(paste(peakdate, year, sep="-")),
+                                 , site.habitat.peakDate),
+                                 site.peakDate)%>%
+  mutate(peak.date = mdy(paste(if_else(is.na(peakdate), site.peakdate, peakdate), year, sep="-")),
          peak.window.2mo = factor(if_else(abs(difftime(ymd(collectDate), 
                                                        peak.date, units="days"))<32 , "Y", "N")),
          peak.window.3mo = factor(if_else(abs(difftime(ymd(collectDate), 
                                                        peak.date, units="days"))<46 , "Y", "N")),
          peak.window.4mo = factor(if_else(abs(difftime(ymd(collectDate), 
                                                        peak.date, units="days"))<62 , "Y", "N")))
-# 918 failed to parse
-summary(microbe.ITS.metadata$nlcdClass[which(is.na(microbe.ITS.metadata$peak.date))])
-# the ones that failed to parse are the habitats we eliminated (crops,wetlands,hay)
 
 
 summary(microbe.ITS.metadata$peak.window.4mo)
@@ -638,7 +612,7 @@ for(i in 1:dim(ITS.site.hab.year.samples)[1]){
   }
 }
 
-# still 5 NAs - a site-habitat-year that had ITS data but no plant data
+# still 10 NAs - a site-habitat-year that had ITS data but no plant data
 
 
 # Pull out ITS sampleIDs for these plot-dates
@@ -647,7 +621,7 @@ for(i in 1:dim(ITS.site.hab.year.samples)[1]){
 
 # --------------------------------------------------------------------------- #
 ## Full join drop rows with NAs
-# eliminates a lot! Went from 10284 rows to 687
+# eliminates a lot! 
 
 names(ITS.site.hab.year.samples)[6:7] <- c("plotID", "collectDate")
 x <- full_join(drop_na(ITS.site.hab.year.samples),microbe.ITS.metadata)
@@ -690,6 +664,35 @@ ls <- unlist(lapply(as.list(microbial.biomass.raw$sme_scaledMicrobialBiomass$bio
 summary(factor(ls))
 microbial.biomass.raw$sme_scaledMicrobialBiomass$biomassID[which(ls==2)]
 
+### see NEON tutorial about this.
+### There is known contamination of lipid c18To0 from the Buyer and Sasser 
+# high-throughput PLFA method that comes from the solid phase extraction 96 well 
+# plates used. Prior to November 2021 this lipid was excluded from the results and 
+# no correction to the total lipid concentration data is necessary, however, since 
+# then c18To0 has been reported in the data and needs to be subtracted from the 
+# total lipid concentration to get a reliable estimate of microbial biomass. Note 
+# that an alternative approach to correcting the total lipid concentration data is 
+# to perform a blank correction based on lipid concentrations reported in blanks 
+# in the microb$sme_batchResults table.
+# # Identify pre- (i.e., c18To0ScaledConcentration = NA) and post-November 2021 data
+# 
+# preNov2021 <- is.na(microb$sme_scaledMicrobialBiomass$c18To0ScaledConcentration)
+# 
+# 
+# 
+# # Add the pre-November 2021 total lipid concentration data to a new column (no correction needed)
+# 
+# microb$sme_scaledMicrobialBiomass$correctedTotLipidConc[preNov2021] <- 
+#   microb$sme_scaledMicrobialBiomass$totalLipidScaledConcentration[preNov2021]
+# 
+# 
+# 
+# # Add the corrected (totalLipidScaledConcentration - c18To0ScaledConcentration) total lipid concentration data to the new column
+# 
+# microb$sme_scaledMicrobialBiomass$correctedTotLipidConc[!preNov2021] <- 
+#   microb$sme_scaledMicrobialBiomass$totalLipidScaledConcentration[!preNov2021] - 
+#   microb$sme_scaledMicrobialBiomass$c18To0ScaledConcentration[!preNov2021]
+
 cols <- names(microbial.biomass.raw$sme_scaledMicrobialBiomass)[c(13,24:84,86)]
 microbial.biomass.scaled <- microbial.biomass.raw$sme_scaledMicrobialBiomass %>%
   mutate_at(vars(domainID, siteID, plotID), factor) %>%
@@ -712,17 +715,6 @@ microbe.ITS.metadata <- left_join(microbe.ITS.metadata,microbial.biomass.scaled 
 soil.periodic.merge <- left_join(soil.periodic.merge, daymetsoilplots.sums[,c(1,2,12:18)], by = join_by(plotID == plotID, collectDate == date))
 microbe.ITS.metadata <- left_join(microbe.ITS.metadata, daymetsoilplots.sums[,c(1,2,12:18)], by = join_by(plotID == plotID, collectDate == date))
 #write_csv(soil.periodic.merge, file="soilPeriodicMerge.csv")
-##############################################################################
-# Lorinda merged metadata with her sequence numbers. a few are missing.
-# probably need to update this - talk to Lorinda
-# sequenced.metadata <- read.csv("Merged_Neon_Microbial_metadata.csv")
-# sequenced.metadata$collectDate <- as.Date(sequenced.metadata$collectDate)
-# IDs <- sequenced.metadata$geneticSampleID[which(is.na(sequenced.metadata$coreCoordinateX))]
-# # they are the habitat types we eliminated: wetlands and ag
-# 
-# sequenced.metadata <- left_join(sequenced.metadata, 
-#                                 daymetsoilplots.sums[,c(1,2,12:18)], 
-#                                 by = join_by(plotID == plotID, collectDate == date))
 
 
 ###############################################################################
@@ -752,12 +744,12 @@ soil.plots <- soil$spc_perplot %>%
 
 
 # join dataframes plot and horizon info
-soil.initial <- left_join(as.tibble(soil$spc_perhorizon) %>%
+soil.initial <- left_join(as_tibble(soil$spc_perhorizon) %>%
                             mutate(collectDate=floor_date(collectDate, unit="days")) %>% 
                             mutate_at(vars(domainID, siteID, plotID, pitID, horizonID, horizonName), factor) %>%
                             select(c(3:7,10:13)),
                           
-                          as.tibble(soil$spc_perplot) %>%
+                          as_tibble(soil$spc_perplot) %>%
                             mutate(collectDate=floor_date(collectDate, unit="days")) %>%
                             mutate_at(vars(domainID, siteID, plotType, plotID, pitID, nlcdClass ), factor) %>%
                             select(c(2:4,6,7:18,20:22,27:32)),
@@ -765,7 +757,7 @@ soil.initial <- left_join(as.tibble(soil$spc_perhorizon) %>%
                           relationship = "many-to-one")
 
 ############### now add biochem
-soil.initial.biogeochem <-as.tibble(soil$spc_biogeochem) %>%
+soil.initial.biogeochem <-as_tibble(soil$spc_biogeochem) %>%
                             mutate(collectDate=floor_date(collectDate, unit="days")) %>% 
                             mutate_at(vars(domainID, siteID, plotID, horizonID, horizonName), factor) %>%
                             select(c("siteID",	"plotID","collectDate",	"horizonID",	"horizonName",
@@ -836,9 +828,9 @@ soil.initial <- left_join(soil.initial, soil.initial.particlesize)
 
 ### Remove crops, pasture, wetlands -----------------------------------------#
 
-soil.initial <- soil.initial %>%
-  filter(nlcdClass != "cultivatedCrops" & nlcdClass !="pastureHay" & 
-           nlcdClass !="emergentHerbaceousWetlands" & nlcdClass !="woodyWetlands")
+# soil.initial <- soil.initial %>%
+#   filter(nlcdClass != "cultivatedCrops" & nlcdClass !="pastureHay" & 
+#            nlcdClass !="emergentHerbaceousWetlands" & nlcdClass !="woodyWetlands")
 
 ################################################################################
 # microbe.ITS.metadata has sampleTopDepth and sampleBottomDepth
@@ -868,6 +860,9 @@ for(i in 1:dim(microbe.ITS.metadata)[1]){
   mt <- microbe.ITS.metadata$sampleTopDepth[i]
   mb <- microbe.ITS.metadata$sampleBottomDepth[i]
   
+  # there is probably a better way to do this, but I am using the interval 
+  # function in the lubridate package - which is meant to deal with dates
+  # so converting microbial soil sampling depths to 'dates' just to turn them into intervals
   mt1 <- as.Date(mt*10, origin = "2020-01-01")
   mb1 <- as.Date(mb*10, origin = "2020-01-01")
   int.m <- interval(start = mt1, end = mb1 )
@@ -878,12 +873,13 @@ for(i in 1:dim(microbe.ITS.metadata)[1]){
            nlcdClass == microbe.ITS.metadata$nlcdClass[i]) %>%
     dplyr::select(horizonID, horizonTopDepth, horizonBottomDepth)
   
+  # also turning the initial soil sampling depths into (date) intervals
   int.s <- interval(start = as.Date(sdat$horizonTopDepth*10, origin = "2020-01-01"),
                     end = as.Date(sdat$horizonBottomDepth*10, origin = "2020-01-01"))
   
   
-  # int_overlaps(int.m, int.s) # any overlap
-  # int.m %within% int.s # total overlap 
+  # int_overlaps(int.m, int.s) # will indicate any overlap
+  # int.m %within% int.s # will indicate if there is total overlap 
   hor.any <- sdat$horizonID[which(int_overlaps(int.m, int.s))]
   soil.horizon.lineup$n.initial.horizons.any[i] <- length(hor.any)
   hor.total <- sdat$horizonID[which(int.m %within% int.s)]
@@ -893,18 +889,18 @@ for(i in 1:dim(microbe.ITS.metadata)[1]){
 # if want total overlap - lots of 0s
 summary(soil.horizon.lineup$n.initial.horizons.total)
 #   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-# 0.0000  0.0000  0.0000  1.085  1.0000 18.0000 
+# 0.0000  0.0000  0.0000   1.133  1.0000 18.0000 
 length(which(soil.horizon.lineup$n.initial.horizons.total==0))
-# 5763 out of 10284
+# 5602 out of 8975
 
 # if want any overlap:
 summary(soil.horizon.lineup$n.initial.horizons.any)
 # Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-# 0.00    9.00   16.00   18.72   28.00   49.00  
+# 0.00   11.00   18.00   20.49   29.00   51.00   
 length(which(soil.horizon.lineup$n.initial.horizons.any==0))
-# 901 out of 10284 don't overlap at all.
+# most overlap at least some
+# 68 out of 8975 don't overlap at all.
 
-######## May want to take closest value? HAven't done that.
 
 # ----------------------------------------------------------------------------#
 
@@ -912,15 +908,10 @@ length(which(soil.horizon.lineup$n.initial.horizons.any==0))
 # initial soil variables across the ones whose horizons overlap any, and are within
 # the same  horizon category (organic or mineral)
 
-# because I downloaded some provisional data for microbes but not for other 
-# data products there are microbial samples without corresponding soil data.
-# For now cut these down to through 2023
-# and have removed nlcdClasses for other data - remove here
-
-microbe.ITS.metadata <- microbe.ITS.metadata %>%
-  #filter(year(collectDate)<2024) %>%
-  filter(nlcdClass != "cultivatedCrops" & nlcdClass !="pastureHay" & 
-           nlcdClass !="emergentHerbaceousWetlands" & nlcdClass !="woodyWetlands")
+# microbe.ITS.metadata <- microbe.ITS.metadata %>%
+#   filter(year(collectDate)<2024) %>%
+#   filter(nlcdClass != "cultivatedCrops" & nlcdClass !="pastureHay" & 
+#            nlcdClass !="emergentHerbaceousWetlands" & nlcdClass !="woodyWetlands")
 
 
 # need to create a list of horizonIDs for each row of microbe.ITS.metadata
@@ -945,22 +936,25 @@ for(i in 1:dim(microbe.ITS.metadata)[1]){
                     end = as.Date(sdat$horizonBottomDepth*10, origin = "2020-01-01"))
   
   x <- which(int_overlaps(int.m, int.s))  # which horizons overlap at all (any overlap not total overlap)
-  y <- grep("O", sdat$horizonName) # which are in the organic horizon (have O anywhere in the name)
-  if(hor=="O"){
-    soilhorizon.periodictoinitial[[i]] <- sdat$horizonID[ intersect(x,y)] # must both overlap and be in O horizon
-  } else {
-    soilhorizon.periodictoinitial[[i]] <- sdat$horizonID[ c(setdiff(x,y),setdiff(y,x))] # overlap but don't have O in horizon name
-  }
+  #y <- grep("O", sdat$horizonName) # which are in the organic horizon (have O anywhere in the name)
+  #if(hor=="O"){
+    soilhorizon.periodictoinitial[[i]] <- sdat$horizonID[x] #[intersect(x,y)] # must both overlap and be in O horizon
+  #} else {
+  #  soilhorizon.periodictoinitial[[i]] <- sdat$horizonID[ c(setdiff(x,y),setdiff(y,x))] # overlap but don't have O in horizon name
+  #}
 }
 
 length(which(unlist(lapply(soilhorizon.periodictoinitial,length))==0))
-# 124 have no overlap 
+# if cut to just O horizon, 134 have no overlap , which is less than above -- should I? 
+# Right now I am not cutting to O horizon so 68 don't have any overlap
+# some of the microbial samples say there were from M horizon, so ok
 
-#### Might want to find the closest?
+
+################### Might want to find the closest for those? Or within same site but different habitat. I haven't done that.
 
 ##################### Quality Control
 # which(unlist(lapply(soilhorizon.periodictoinitial,length))==0)
-# i=2138 # this one had no overlap, but does it really?
+# i=2980 # this one had no overlap, but does it really?
 # 
 # microbe.ITS.metadata[i,c("siteID", "nlcdClass","horizon","sampleTopDepth","sampleBottomDepth")]
 # 
@@ -968,8 +962,8 @@ length(which(unlist(lapply(soilhorizon.periodictoinitial,length))==0))
 #              c("horizonID","siteID","nlcdClass","horizonName","horizonTopDepth","horizonBottomDepth")]
 # # true
 
-# 5353 had no initial soils. why? 
-# this is NIWO shrubScrub. There are other habitat types from NIWO in the 
+# quite a few have no initial soils. Why? 
+# one is NIWO shrubScrub. There are other habitat types from NIWO in the 
 # initial soils but none in shrubScrub. Should we get info from other habitats, when it's missing?
 
 
@@ -1001,7 +995,7 @@ for(r in 1:dim(microbe.ITS.metadata.initial.soils)[1]){
   }
 }
 length(which(apply(microbe.ITS.metadata.initial.soils[,7:43], 1, sum, na.rm=T)==0))
-# 157 that have no data.
+# 80 that have no data.
 #  some site-habitat-horizons were sampled more than once.
 # so each row isn't independent
 
